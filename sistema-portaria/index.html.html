@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Sistema de Portaria - Painel Cloud</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 20px; background-color: #f0f2f5; }
+        .container { max-width: 1200px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        
+        /* TÍTULOS */
+        h2 { color: #1a73e8; text-align: center; margin-bottom: 25px; text-transform: uppercase; letter-spacing: 1px; }
+        .section-header { 
+            background: #e8f0fe; 
+            color: #1967d2; 
+            padding: 10px 15px; 
+            border-radius: 6px; 
+            font-size: 14px; 
+            font-weight: bold; 
+            margin-bottom: 15px; 
+            border-left: 5px solid #1a73e8;
+            text-transform: uppercase;
+        }
+
+        /* ESTATÍSTICAS */
+        .stats-row { display: flex; gap: 20px; margin-bottom: 25px; }
+        .stat-card { background: #fff; border: 1px solid #e1e4e8; padding: 15px; border-radius: 8px; flex: 1; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .stat-card h3 { margin: 0; font-size: 11px; color: #5f6368; text-transform: uppercase; }
+        .stat-card p { margin: 5px 0 0; font-size: 28px; font-weight: bold; color: #1a73e8; }
+        .stat-alert { color: #d93025 !important; }
+
+        /* FORMULÁRIO */
+        .grid-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #e1e4e8; }
+        .form-group { display: flex; flex-direction: column; }
+        label { font-size: 11px; font-weight: bold; margin-bottom: 5px; color: #555; text-transform: uppercase; }
+        input { padding: 12px; border: 1px solid #ddd; border-radius: 6px; outline: none; text-transform: uppercase; font-size: 13px; }
+        input:focus { border-color: #1a73e8; box-shadow: 0 0 0 2px rgba(26,115,232,0.2); }
+        
+        /* BUSCA */
+        .search-box { display: flex; gap: 10px; margin-bottom: 20px; }
+        .search-input { flex: 1; padding: 12px; border: 2px solid #1a73e8; border-radius: 8px; font-size: 14px; }
+        
+        /* BOTÕES */
+        .btn-add { background-color: #1a73e8; color: white; width: 100%; padding: 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; margin-bottom: 25px; font-size: 14px; transition: 0.2s; }
+        .btn-add:hover { background-color: #1765cc; }
+        .btn-mass-action { background-color: #fb8c00; color: white; display: none; width: 100%; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; margin-bottom: 20px; }
+        
+        /* TABELA */
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #eee; padding: 12px; text-align: left; font-size: 13px; }
+        th { background-color: #f1f3f4; color: #5f6368; text-transform: uppercase; font-size: 11px; }
+        tr:hover { background-color: #fcfcfc; }
+        .status-pendente { color: #d93025; font-weight: bold; background: #fce8e6; padding: 4px 10px; border-radius: 12px; font-size: 11px; }
+        .status-entregue { color: #188038; font-weight: bold; background: #e6f4ea; padding: 4px 10px; border-radius: 12px; font-size: 11px; }
+        .btn-acao { padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; background: white; cursor: pointer; transition: 0.2s; }
+        .btn-acao:hover { background: #f0f2f5; border-color: #bbb; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🏢 Controle e Registro de Encomendas</h2>
+
+    <div class="stats-row">
+        <div class="stat-card">
+            <h3>📦 Aguardando Retirada</h3>
+            <p id="countPendente" class="stat-alert">0</p>
+        </div>
+        <div class="stat-card">
+            <h3>✅ Entregues Hoje</h3>
+            <p id="countHoje">0</p>
+        </div>
+    </div>
+
+    <div class="section-header">📑 Registro de Encomendas</div>
+
+    <div class="grid-form">
+        <div class="form-group"><label>Nome do Morador:</label><input type="text" id="nome" placeholder="EX: JOÃO SILVA"></div>
+        <div class="form-group"><label>Apartamento:</label><input type="text" id="ap" placeholder="EX: 101-A"></div>
+        <div class="form-group"><label>Rastreio / NF:</label><input type="text" id="rastreio" placeholder="OPCIONAL"></div>
+        <div class="form-group"><label>Entregador:</label><input type="text" id="entregador" placeholder="EX: MERCADO LIVRE"></div>
+    </div>
+
+    <button id="btnSalvar" class="btn-add" onclick="salvarRegistro()">💾 SALVAR NOVO REGISTRO</button>
+    <button id="btnBaixaMassa" class="btn-mass-action" onclick="darBaixaEmMassa()">✅ DAR BAIXA NOS SELECIONADOS</button>
+
+    <div class="section-header">🔍 Consulta e Histórico</div>
+
+    <div class="search-box">
+        <input type="text" id="busca" class="search-input" placeholder="Pesquisar por nome ou apartamento..." onkeyup="filtrarTabela()">
+        <button onclick="limparBusca()" style="background:#6c757d; color:white; border:none; border-radius:8px; padding:0 20px; cursor:pointer; font-weight:bold;">LIMPAR</button>
+    </div>
+
+    <table id="tabelaRegistro">
+        <thead>
+            <tr>
+                <th style="width: 40px;"><input type="checkbox" id="selectAll" onclick="toggleTodos(this)"></th>
+                <th>Data Chegada</th>
+                <th>Morador / AP</th>
+                <th>Rastreio / NF</th>
+                <th>Status / Entrega</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+<script>
+    // MANTENHA SUAS CONFIGURAÇÕES DO SUPABASE AQUI
+    const SUPABASE_URL = 'https://qqpcobadyalpynwcsfxl.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFxcGNvYmFkeWFscHlud2NzZnhsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkzNTk1MTIsImV4cCI6MjA4NDkzNTUxMn0.i2pjAhMdsX4H0R78lFkV259dEakhaDuGe0ksTHlQ7ns';
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let dadosCompletos = [];
+    let idEdicao = null;
+
+    window.onload = carregarDados;
+
+    async function carregarDados() {
+        const { data, error } = await _supabase.from('encomendas').select('*').order('created_at', { ascending: false });
+        if (error) console.error(error);
+        else {
+            dadosCompletos = data;
+            atualizarStats(data);
+            renderizarTabela(data);
+        }
+    }
+
+    function atualizarStats(lista) {
+        const pendentes = lista.filter(i => !i.recebedor).length;
+        const hoje = new Date().toLocaleDateString('pt-BR');
+        const entreguesHoje = lista.filter(i => i.recebedor && i.data_baixa && i.data_baixa.includes(hoje)).length;
+
+        document.getElementById('countPendente').innerText = pendentes;
+        document.getElementById('countHoje').innerText = entreguesHoje;
+    }
+
+    async function salvarRegistro() {
+        const dados = {
+            nome_morador: document.getElementById('nome').value.trim().toUpperCase(),
+            apartamento: document.getElementById('ap').value.trim().toUpperCase(),
+            rastreio_nf: document.getElementById('rastreio').value.trim().toUpperCase(),
+            entregador: document.getElementById('entregador').value.trim().toUpperCase()
+        };
+
+        if (!dados.nome_morador || !dados.apartamento) return alert("⚠️ NOME E AP SÃO OBRIGATÓRIOS!");
+
+        if (idEdicao) {
+            await _supabase.from('encomendas').update(dados).eq('id', idEdicao);
+            idEdicao = null;
+        } else {
+            await _supabase.from('encomendas').insert([dados]);
+        }
+        
+        limparCampos();
+        carregarDados();
+    }
+
+    function renderizarTabela(lista) {
+        const tbody = document.querySelector("#tabelaRegistro tbody");
+        tbody.innerHTML = "";
+        lista.forEach((item) => {
+            const entregue = !!item.recebedor;
+            const dataFormatada = new Date(item.created_at).toLocaleDateString('pt-BR');
+
+            tbody.innerHTML += `
+                <tr>
+                    <td>${!entregue ? `<input type="checkbox" class="check-item" value="${item.id}" onclick="atualizarInterface()">` : ''}</td>
+                    <td>${dataFormatada}</td>
+                    <td><b>${item.nome_morador}</b><br><small>AP: ${item.apartamento}</small></td>
+                    <td>${item.rastreio_nf || '---'}</td>
+                    <td><span class="${entregue ? 'status-entregue' : 'status-pendente'}">
+                        ${entregue ? 'RETIRADO POR: ' + item.recebedor + '<br><small>' + item.data_baixa + '</small>' : 'AGUARDANDO RETIRADA'}
+                    </span></td>
+                    <td>
+                        <button class="btn-acao" onclick="prepararEdicao(${item.id})" title="Editar">✏️</button>
+                        <button class="btn-acao" onclick="excluirRegistro(${item.id})" title="Excluir" style="color:red">🗑️</button>
+                    </td>
+                </tr>`;
+        });
+        atualizarInterface();
+    }
+
+    function filtrarTabela() {
+        const termo = document.getElementById('busca').value.toUpperCase();
+        const filtrados = dadosCompletos.filter(i => 
+            i.nome_morador.includes(termo) || i.apartamento.includes(termo)
+        );
+        renderizarTabela(filtrados);
+    }
+
+    function limparBusca() {
+        document.getElementById('busca').value = "";
+        renderizarTabela(dadosCompletos);
+    }
+
+    async function darBaixaEmMassa() {
+        const selecionados = Array.from(document.querySelectorAll('.check-item:checked')).map(cb => cb.value);
+        const pessoa = prompt("NOME DE QUEM ESTÁ RETIRANDO:").toUpperCase();
+
+        if (pessoa) {
+            const agora = new Date().toLocaleString('pt-BR');
+            await _supabase.from('encomendas').update({ recebedor: pessoa, data_baixa: agora }).in('id', selecionados);
+            carregarDados();
+            document.getElementById('selectAll').checked = false;
+        }
+    }
+
+    function prepararEdicao(id) {
+        const item = dadosCompletos.find(i => i.id == id);
+        if (item) {
+            document.getElementById('nome').value = item.nome_morador;
+            document.getElementById('ap').value = item.apartamento;
+            document.getElementById('rastreio').value = item.rastreio_nf;
+            document.getElementById('entregador').value = item.entregador;
+            idEdicao = id;
+            document.getElementById('btnSalvar').innerText = "🔄 ATUALIZAR REGISTRO";
+            document.getElementById('btnSalvar').style.backgroundColor = "#fb8c00";
+            window.scrollTo(0, 0);
+        }
+    }
+
+    async function excluirRegistro(id) {
+        if (confirm("DESEJA EXCLUIR ESTE REGISTRO PERMANENTEMENTE?")) {
+            await _supabase.from('encomendas').delete().eq('id', id);
+            carregarDados();
+        }
+    }
+
+    function atualizarInterface() {
+        const selecionados = document.querySelectorAll('.check-item:checked').length;
+        const btnMassa = document.getElementById('btnBaixaMassa');
+        btnMassa.style.display = selecionados > 0 ? 'block' : 'none';
+        btnMassa.innerText = `✅ DAR BAIXA EM (${selecionados}) ITENS`;
+    }
+
+    function toggleTodos(source) {
+        document.querySelectorAll('.check-item').forEach(cb => cb.checked = source.checked);
+        atualizarInterface();
+    }
+
+    function limparCampos() {
+        ['nome', 'ap', 'rastreio', 'entregador'].forEach(id => document.getElementById(id).value = "");
+        idEdicao = null;
+        document.getElementById('btnSalvar').innerText = "💾 SALVAR NOVO REGISTRO";
+        document.getElementById('btnSalvar').style.backgroundColor = "#1a73e8";
+    }
+</script>
+</body>
+</html>
