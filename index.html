@@ -3,270 +3,1509 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Portaria - Correção de Seleção</title>
+    <title>Sistema de Portaria</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <script>(function(){const t=localStorage.getItem('theme')||'light';document.documentElement.setAttribute('data-theme',t);})();</script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 20px; background-color: #f0f2f5; }
-        .container { max-width: 1200px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        h2 { color: #1a73e8; text-align: center; margin-bottom: 25px; text-transform: uppercase; letter-spacing: 1px; }
-        .section-header { background: #e8f0fe; color: #1967d2; padding: 10px 15px; border-radius: 6px; font-size: 14px; font-weight: bold; margin-bottom: 15px; border-left: 5px solid #1a73e8; text-transform: uppercase; }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        /* ESTATÍSTICAS */
-        .stats-row { display: flex; gap: 20px; margin-bottom: 25px; }
-        .stat-card { background: #fff; border: 1px solid #e1e4e8; padding: 15px; border-radius: 8px; flex: 1; text-align: center; }
-        .stat-card h3 { margin: 0; font-size: 11px; color: #5f6368; text-transform: uppercase; }
-        .stat-card p { margin: 5px 0 0; font-size: 28px; font-weight: bold; color: #1a73e8; }
-        .stat-alert { color: #d93025 !important; }
+        :root {
+            --primary:      #4A7AFF;
+            --primary-dark: #3F72E5;
+            --success:      #06d6a0;
+            --success-dark: #04b888;
+            --danger:       #ef233c;
+            --warning:      #fb8500;
+            --text:         #1E222D;
+            --text-muted:   #646A78;
+            --border:       #DDE2E8;
+            --bg:           #F0F3F7;
+            --bg-card:      #FFFFFF;
+            --bg-input:     #F8FAFC;
+            --placeholder:  #A4AEBF;
+            --transition:   background 0.22s ease, color 0.22s ease, border-color 0.22s ease;
+        }
 
-        /* FORMULÁRIO */
-        .grid-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #e1e4e8; }
-        .form-group { display: flex; flex-direction: column; }
-        label { font-size: 11px; font-weight: bold; margin-bottom: 5px; color: #555; text-transform: uppercase; }
-        input { padding: 12px; border: 1px solid #ddd; border-radius: 6px; outline: none; text-transform: uppercase; font-size: 13px; }
+        /* ── Dark mode ─────────────────────────────────────────────────────── */
+        [data-theme="dark"] {
+            --primary:      #5B8AFF;
+            --primary-dark: #4A7AFF;
+            --success-dark: #05d4a0;
+            --danger:       #ff4d6a;
+            --text:         #E4E4E4;
+            --text-muted:   #878787;
+            --border:       #2C2C36;
+            --bg:           #111115;
+            --bg-card:      #1B1B22;
+            --bg-input:     #23232C;
+            --placeholder:  #40404E;
+            color-scheme: dark;
+        }
+
+        [data-theme="dark"] .app-header { background: linear-gradient(135deg, #1A2A55 0%, #111E3F 100%); }
+
+        [data-theme="dark"] .blob-1 { background: radial-gradient(circle,#4A7AFF,#1E2E6E); opacity:.22; }
+        [data-theme="dark"] .blob-2 { background: radial-gradient(circle,#3F72E5,#152060); opacity:.18; }
+        [data-theme="dark"] .blob-3 { background: radial-gradient(circle,#05d4a0,#024E3A); opacity:.14; }
+
+        [data-theme="dark"] .container  { box-shadow: 0 6px 40px rgba(0,0,0,.55), 0 1px 3px rgba(0,0,0,.4); }
+        [data-theme="dark"] .table-wrapper { box-shadow: none; }
+
+        /* Inputs */
+        [data-theme="dark"] input[type="text"] { background: var(--bg-input); }
+        [data-theme="dark"] input[type="text"]::placeholder { color: var(--placeholder); }
+
+        /* Buttons */
+        [data-theme="dark"] .btn-secondary       { background: #26262F; color: var(--text); }
+        [data-theme="dark"] .btn-secondary:hover  { background: #2E2E3A; }
+        [data-theme="dark"] .btn-primary:disabled { background: #2A2A34; color: #50505C; }
+
+        /* Stat icons */
+        [data-theme="dark"] .stat-icon.red    { background: rgba(255,77,106,.12); color: #ff4d6a; }
+        [data-theme="dark"] .stat-icon.green  { background: rgba(5,212,160,.12);  color: #05d4a0; }
+        [data-theme="dark"] .stat-value.alert   { color: #ff4d6a; }
+        [data-theme="dark"] .stat-value.success { color: #05d4a0; }
+
+        /* Badges */
+        [data-theme="dark"] .badge-pending   { background: rgba(255,77,106,.12); color: #ff4d6a; }
+        [data-theme="dark"] .badge-delivered { background: rgba(5,212,160,.12);  color: #05d4a0; }
+
+        /* Action icon buttons */
+        [data-theme="dark"] .btn-icon.confirm         { background: rgba(5,212,160,.12);  color: #05d4a0; }
+        [data-theme="dark"] .btn-icon.confirm:hover   { background: #05d4a0; color: #111; }
+        [data-theme="dark"] .btn-icon.edit            { background: rgba(91,138,255,.12); color: var(--primary); }
+        [data-theme="dark"] .btn-icon.edit:hover      { background: var(--primary); color: white; }
+        [data-theme="dark"] .btn-icon.del             { background: rgba(255,77,106,.1);  color: #ff4d6a; }
+        [data-theme="dark"] .btn-icon.del:hover       { background: #ff4d6a; color: white; }
+
+        /* Tag */
+        [data-theme="dark"] .tag { background: rgba(91,138,255,.15); }
+
+        /* Pagination */
+        [data-theme="dark"] .page-btn.active {
+            background: linear-gradient(135deg,#324D99,#253B78);
+            border-color: rgba(91,138,255,0.25);
+            color: white;
+            box-shadow: 0 3px 10px rgba(0,0,0,.35);
+        }
+
+        /* Buttons & Tabs overides to avoid glaring blue */
+        [data-theme="dark"] .btn-primary {
+            background: linear-gradient(135deg, #324D99, #253B78);
+            border: 1px solid rgba(91,138,255,0.2);
+            color: #E4E4E4;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+        }
+        [data-theme="dark"] .btn-primary:hover:not(:disabled) {
+            background: linear-gradient(135deg, #3A59B2, #2B468F);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+        }
+        [data-theme="dark"] .tab.active {
+            background: linear-gradient(135deg, #324D99, #253B78);
+            border: 1px solid rgba(91,138,255,0.15);
+            color: #E4E4E4;
+            box-shadow: 0 3px 12px rgba(0,0,0,0.25);
+        }
+        [data-theme="dark"] thead tr {
+            background: linear-gradient(135deg, #1B2B55 0%, #131F41 100%);
+            border-bottom: 1px solid rgba(91,138,255,0.15);
+        }
+
+        /* Modal */
+        [data-theme="dark"] .modal-overlay      { background: rgba(0,0,0,.65); }
+        [data-theme="dark"] .modal {
+            background: rgba(27, 27, 34, 0.65);
+            box-shadow: 0 16px 48px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        [data-theme="dark"] .modal-icon.success { background: rgba(5,212,160,.12);  color: #05d4a0; }
+        [data-theme="dark"] .modal-icon.danger  { background: rgba(255,77,106,.12); color: #ff4d6a; }
+        [data-theme="dark"] .autocomplete-list  { box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+
+        /* Toast */
+        [data-theme="dark"] .toast.success { border-left-color: #05d4a0; }
+        [data-theme="dark"] .toast.error   { border-left-color: #ff4d6a; }
+
+        /* Smooth theme transitions on key elements */
+        body, .container, .content, .app-header,
+        .stat-card, .grid-form, .tab-container, .table-wrapper,
+        .modal, .toast, .page-btn, input[type="text"], .btn-secondary,
+        td, th, .badge, .tag, .section-header, .stat-icon,
+        .btn-icon, .search-input, .kpi-card, .chart-card {
+            transition: var(--transition);
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            min-height: 100vh;
+            background: var(--bg);
+            padding: 32px 16px;
+            color: var(--text);
+            overflow-x: hidden;
+        }
+
+        /* Subtle ambient blobs on light bg */
+        .blob {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.18;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .blob-1 {
+            width: 500px; height: 500px;
+            background: radial-gradient(circle, #4A7AFF, #a5c0ff);
+            top: -180px; left: -180px;
+            animation: drift 14s ease-in-out infinite alternate;
+        }
+        .blob-2 {
+            width: 600px; height: 600px;
+            background: radial-gradient(circle, #3F72E5, #c4d8ff);
+            bottom: -220px; right: -220px;
+            animation: drift 18s ease-in-out infinite alternate-reverse;
+        }
+        .blob-3 {
+            width: 280px; height: 280px;
+            background: radial-gradient(circle, #06d6a0, #a7f3e0);
+            top: 45%; left: 60%;
+            animation: drift 11s ease-in-out infinite alternate;
+        }
+
+        @keyframes drift {
+            from { transform: translate(0, 0) scale(1); }
+            to   { transform: translate(35px, 25px) scale(1.12); }
+        }
+
+        /* Main container */
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1180px;
+            margin: 0 auto;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            box-shadow: 0 4px 24px rgba(74,122,255,0.08), 0 1px 4px rgba(0,0,0,0.06);
+            overflow: hidden;
+            animation: slideUp 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(40px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Header */
+        .app-header {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            padding: 24px 36px;
+            background: linear-gradient(135deg, #4A7AFF 0%, #3F72E5 100%);
+            border-bottom: none;
+        }
+        .logo-wrap {
+            width: 48px; height: 48px;
+            border-radius: 14px;
+            background: rgba(255,255,255,0.18);
+            border: 1px solid rgba(255,255,255,0.28);
+            display: flex; align-items: center; justify-content: center;
+            color: white;
+            flex-shrink: 0;
+        }
+        .app-header-text h1 {
+            font-size: 19px;
+            font-weight: 700;
+            color: white;
+            letter-spacing: 0.2px;
+        }
+        .app-header-text p {
+            font-size: 12px;
+            color: rgba(255,255,255,0.65);
+            margin-top: 3px;
+            letter-spacing: 0.1px;
+        }
+        .header-actions {
+            display: flex; align-items: center; gap: 8px;
+            margin-left: auto; flex-shrink: 0;
+        }
+        .nav-btn {
+            display: inline-flex; align-items: center; gap: 7px;
+            padding: 9px 16px;
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.28);
+            border-radius: 10px;
+            color: white;
+            text-decoration: none;
+            font-size: 12px; font-weight: 500; letter-spacing: 0.1px;
+            transition: background 0.18s, transform 0.18s;
+        }
+        .nav-btn:hover { background: rgba(255,255,255,0.25); transform: translateY(-1px); }
+        .theme-btn {
+            width: 38px; height: 38px;
+            border: 1px solid rgba(255,255,255,0.28);
+            border-radius: 10px;
+            background: rgba(255,255,255,0.15);
+            color: white;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.18s, transform 0.18s;
+            flex-shrink: 0;
+        }
+        .theme-btn:hover { background: rgba(255,255,255,0.26); transform: scale(1.06); }
+
+        /* Content area */
+        .content {
+            background: var(--bg);
+            padding: 32px 36px;
+        }
+
+        /* Stats */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+        .stat-card {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 22px 20px;
+            box-shadow: 0 1px 6px rgba(0,0,0,0.05);
+            transition: transform 0.22s ease, box-shadow 0.22s ease;
+            animation: fadeIn 0.5s ease both;
+        }
+        .stat-card:nth-child(1) { animation-delay: 0.1s; }
+        .stat-card:nth-child(2) { animation-delay: 0.2s; }
+        .stat-card:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(74,122,255,0.1); }
+        .stat-icon {
+            width: 54px; height: 54px;
+            border-radius: 16px;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+        .stat-icon.red   { background: rgba(239,35,60,0.1);  color: #ef233c; }
+        .stat-icon.green { background: rgba(6,214,160,0.12); color: var(--success-dark); }
+        .stat-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            color: var(--text-muted);
+        }
+        .stat-value {
+            font-size: 34px;
+            font-weight: 700;
+            line-height: 1.1;
+            margin-top: 4px;
+            transition: transform 0.2s;
+        }
+        .stat-value.alert   { color: var(--danger); }
+        .stat-value.success { color: var(--success-dark); }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Section header */
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: var(--primary);
+            padding-bottom: 14px;
+            border-bottom: 2px solid rgba(74,122,255,0.12);
+            margin-bottom: 22px;
+        }
+
+        /* Form */
+        .grid-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 16px;
+            padding: 24px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            margin-bottom: 18px;
+        }
+        .form-group { display: flex; flex-direction: column; gap: 7px; position: relative; }
         
-        .btn-add { background-color: #1a73e8; color: white; width: 100%; padding: 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; margin-bottom: 25px; font-size: 14px; }
-        .btn-add:disabled { background-color: #ccc; }
-        
-        /* BOTÃO LARANJA DE BAIXA EM MASSA */
-        .btn-mass-action { background-color: #fb8c00; color: white; display: none; width: 100%; padding: 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-bottom: 20px; font-size: 14px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .autocomplete-list {
+            position: absolute;
+            top: calc(100% + 4px);
+            left: 0; right: 0;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+            max-height: 180px;
+            overflow-y: auto;
+            z-index: 9999;
+            display: none;
+        }
+        .autocomplete-item {
+            padding: 10px 14px;
+            font-size: 12px;
+            color: var(--text);
+            cursor: pointer;
+            border-bottom: 1px solid var(--border);
+            transition: background 0.15s;
+        }
+        .autocomplete-item:hover { background: rgba(74,122,255,0.06); color: var(--primary); font-weight: 500; }
+        .autocomplete-item:last-child { border-bottom: none; }
 
-        /* ABAS E BUSCA */
-        .tab-container { display: flex; gap: 10px; margin-bottom: 15px; }
-        .tab { padding: 10px 20px; cursor: pointer; border: 1px solid #ddd; background: #fff; border-radius: 6px; font-weight: bold; color: #666; }
-        .tab.active { background: #1a73e8; color: white; border-color: #1a73e8; }
-        .search-box { display: flex; gap: 10px; margin-bottom: 20px; }
-        .search-input { flex: 1; padding: 12px; border: 2px solid #1a73e8; border-radius: 8px; font-size: 14px; }
+        label {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            color: var(--text-muted);
+        }
+        input[type="text"] {
+            padding: 12px 15px;
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            text-transform: uppercase;
+            color: var(--text);
+            background: var(--bg-input);
+            transition: border-color 0.2s, box-shadow 0.2s, background 0.22s;
+            outline: none;
+            width: 100%;
+        }
+        input[type="text"]:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(74,122,255,0.12);
+        }
+        input[type="text"]::placeholder { text-transform: none; color: var(--placeholder); font-weight: 400; }
 
-        /* TABELA */
-        table { width: 100%; border-collapse: collapse; }
-        th, td { border-bottom: 1px solid #eee; padding: 12px; text-align: left; font-size: 13px; }
-        th { background-color: #f1f3f4; color: #5f6368; text-transform: uppercase; font-size: 11px; }
-        .status-pendente { color: #d93025; font-weight: bold; background: #fce8e6; padding: 4px 10px; border-radius: 12px; font-size: 11px; }
-        .status-entregue { color: #188038; font-weight: bold; background: #e6f4ea; padding: 4px 10px; border-radius: 12px; font-size: 11px; }
-        .btn-acao { padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; background: white; cursor: pointer; }
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 14px 24px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 13px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s;
+        }
+        .btn:active { transform: scale(0.98) !important; }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #4A7AFF, #3F72E5);
+            color: white;
+            width: 100%;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 16px rgba(74,122,255,0.3);
+        }
+        .btn-primary:hover:not(:disabled) { box-shadow: 0 8px 24px rgba(74,122,255,0.45); transform: translateY(-2px); }
+        .btn-primary:disabled { background: #d1d5db; box-shadow: none; cursor: not-allowed; transform: none !important; }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #fb8500, #d96e00);
+            color: white;
+            width: 100%;
+            margin-bottom: 22px;
+            box-shadow: 0 4px 18px rgba(251,133,0,0.35);
+            display: none;
+        }
+        .btn-warning:hover { box-shadow: 0 8px 28px rgba(251,133,0,0.5); transform: translateY(-2px); }
+
+        .btn-secondary {
+            background: #EFEFED;
+            color: var(--text);
+        }
+        .btn-secondary:hover { background: #E4E4E2; }
+
+        .btn-danger-outline {
+            background: linear-gradient(135deg, #ef233c, #c1121f);
+            color: white;
+            flex: 1;
+        }
+        .btn-danger-outline:hover { box-shadow: 0 6px 20px rgba(239,35,60,0.4); transform: translateY(-1px); }
+
+        /* Tabs */
+        .tab-container {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 18px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 5px;
+        }
+        .tab {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 11px 16px;
+            border: none;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            cursor: pointer;
+            transition: all 0.22s ease;
+            background: transparent;
+            color: var(--text-muted);
+        }
+        .tab.active {
+            background: linear-gradient(135deg, #4A7AFF, #3F72E5);
+            color: white;
+            box-shadow: 0 3px 12px rgba(74,122,255,0.28);
+        }
+        .tab:not(.active):hover { background: rgba(74,122,255,0.06); color: var(--primary); }
+
+        /* Search */
+        .search-wrapper {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        .search-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #ABABAB;
+            pointer-events: none;
+            display: flex;
+        }
+        input[type="text"].search-input {
+            padding: 13px 16px 13px 44px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 400;
+            text-transform: none !important;
+        }
+
+        /* Table */
+        .table-wrapper {
+            border-radius: 16px;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+        }
+        table { width: 100%; border-collapse: collapse; min-width: 600px; }
+        thead tr { background: linear-gradient(135deg, #4A7AFF 0%, #3F72E5 100%); }
+        th {
+            padding: 14px 16px;
+            text-align: left;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            color: rgba(255,255,255,0.82);
+            white-space: nowrap;
+        }
+        tbody tr {
+            border-bottom: 1px solid var(--border);
+            transition: background 0.15s;
+            animation: rowIn 0.3s ease both;
+            background: var(--bg-card);
+        }
+        tbody tr:last-child { border-bottom: none; }
+        tbody tr:hover { background: rgba(74,122,255,0.04); }
+        td b { font-weight: 600; font-size: 13px; }
+        td small { font-size: 11px; color: var(--text-muted); display: block; margin-top: 2px; }
+
+        tbody tr.selected-row { background: rgba(74,122,255,0.08) !important; }
+        [data-theme="dark"] tbody tr.selected-row { background: rgba(91,138,255,0.18) !important; }
+
+        @keyframes rowIn {
+            from { opacity: 0; transform: translateX(-6px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 11px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.2px;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+        .badge-pending   { background: rgba(239,35,60,0.1);  color: #ef233c; }
+        .badge-delivered { background: rgba(6,214,160,0.12); color: var(--success-dark); }
+
+        /* Action buttons */
+        .actions { display: flex; gap: 6px; align-items: center; }
+        .btn-icon {
+            width: 34px; height: 34px;
+            border: none;
+            border-radius: 9px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.16s ease;
+        }
+        .btn-icon:hover { transform: scale(1.1); }
+        .btn-icon.confirm { background: rgba(6,214,160,0.12);  color: var(--success-dark); }
+        .btn-icon.confirm:hover { background: var(--success); color: white; }
+        .btn-icon.edit    { background: rgba(74,122,255,0.1);   color: var(--primary); }
+        .btn-icon.edit:hover { background: var(--primary); color: white; }
+        .btn-icon.del     { background: rgba(239,35,60,0.1);   color: var(--danger); }
+        .btn-icon.del:hover { background: var(--danger); color: white; }
+
+        /* Checkbox */
+        input[type="checkbox"] {
+            width: 16px; height: 16px;
+            accent-color: var(--primary);
+            cursor: pointer;
+        }
+
+        /* Entregador tag */
+        .tag {
+            display: inline-block;
+            font-size: 10px;
+            background: rgba(74,122,255,0.08);
+            color: var(--primary);
+            padding: 2px 7px;
+            border-radius: 4px;
+            font-weight: 600;
+            margin-top: 3px;
+            letter-spacing: 0.2px;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 60px 24px;
+            color: var(--text-muted);
+        }
+        .empty-state svg { opacity: 0.25; margin-bottom: 14px; }
+        .empty-state p { font-size: 14px; font-weight: 500; }
+        .empty-state small { font-size: 12px; opacity: 0.7; }
+
+        /* Pagination */
+        .pagination-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding-top: 20px;
+            margin-top: 4px;
+        }
+        .pagination-info {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+        .pagination-controls { display: flex; align-items: center; gap: 5px; }
+        .page-btn {
+            min-width: 36px; height: 36px;
+            padding: 0 8px;
+            border: 1.5px solid var(--border);
+            border-radius: 9px;
+            background: var(--bg-card);
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text);
+            transition: all 0.16s;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .page-btn:hover:not(:disabled):not(.active) { border-color: var(--primary); color: var(--primary); }
+        .page-btn.active { background: linear-gradient(135deg, #4A7AFF, #3F72E5); border-color: transparent; color: white; box-shadow: 0 3px 10px rgba(74,122,255,0.3); }
+        .page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            background: var(--bg-card);
+            border-radius: 14px;
+            padding: 14px 18px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text);
+            transform: translateX(calc(100% + 32px));
+            transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+            z-index: 9000;
+            max-width: 360px;
+            border: 1px solid var(--border);
+        }
+        .toast.show { transform: translateX(0); }
+        .toast.error   { border-left: 4px solid var(--danger); }
+        .toast.success { border-left: 4px solid var(--success); }
+
+        /* Modal overlay */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(46,46,46,0.35);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 8000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.22s ease;
+            padding: 16px;
+        }
+        .modal-overlay.show { opacity: 1; pointer-events: all; }
+        .modal {
+            background: rgba(255, 255, 255, 0.72);
+            backdrop-filter: blur(28px) saturate(180%);
+            -webkit-backdrop-filter: blur(28px) saturate(180%);
+            border-radius: 22px;
+            padding: 34px;
+            width: 100%;
+            max-width: 440px;
+            box-shadow: 0 16px 48px rgba(0,0,0,0.12), inset 0 0 0 1px rgba(255,255,255,0.5);
+            transform: scale(0.92) translateY(10px);
+            transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+        .modal-overlay.show .modal { transform: scale(1) translateY(0); }
+        .modal-icon {
+            width: 54px; height: 54px;
+            border-radius: 16px;
+            display: flex; align-items: center; justify-content: center;
+            margin-bottom: 18px;
+        }
+        .modal-icon.success { background: rgba(6,214,160,0.12); color: var(--success-dark); }
+        .modal-icon.danger  { background: rgba(239,35,60,0.1);  color: var(--danger); }
+        .modal h3 { font-size: 18px; font-weight: 600; margin-bottom: 6px; color: var(--text); }
+        .modal p  { font-size: 13px; color: var(--text-muted); margin-bottom: 22px; line-height: 1.6; }
+        .modal .form-group { margin-bottom: 20px; }
+        .modal-actions { display: flex; gap: 10px; }
+        .modal-actions .btn { flex: 1; margin: 0; }
+
+        /* Loading spinner */
+        .spinner {
+            display: inline-block;
+            width: 18px; height: 18px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Responsive */
+        .mobile-only-tag { display: none; }
+        @media (max-width: 680px) {
+            .mobile-only-tag { display: inline-block; margin-left: 4px; border: 1px solid rgba(74,122,255,0.3); }
+            body { padding: 12px 10px; }
+            .app-header { padding: 20px; flex-direction: column; align-items: flex-start; gap: 14px; }
+            .header-actions { margin-left: 0; width: 100%; justify-content: space-between; }
+            .content { padding: 20px 14px; }
+            .grid-form { padding: 18px; }
+            .modal { padding: 24px 20px; border-radius: 18px; }
+            .modal-actions { flex-direction: column; gap: 8px; }
+            .modal-actions .btn { width: 100%; }
+            th:nth-child(1), td:nth-child(1),
+            th:nth-child(4), td:nth-child(4),
+            th:nth-child(5), td:nth-child(5),
+            th:nth-child(6), td:nth-child(6) { display: none; }
+        }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>🏢 Controle de Encomendas</h2>
+<!-- Background blobs -->
+<div class="blob blob-1"></div>
+<div class="blob blob-2"></div>
+<div class="blob blob-3"></div>
 
-    <div class="stats-row">
-        <div class="stat-card"><h3>📦 Aguardando Retirada</h3><p id="countPendente" class="stat-alert">0</p></div>
-        <div class="stat-card"><h3>✅ Entregues Hoje</h3><p id="countHoje">0</p></div>
+<!-- Toast -->
+<div class="toast" id="toast" role="alert"></div>
+
+<!-- Modal: Registro de Encomenda -->
+<div class="modal-overlay" id="modalRegistro" onclick="fecharModalRegistro(event)">
+    <div class="modal" style="max-width: 540px;">
+        <div class="modal-icon" style="background: rgba(74,122,255,0.1); color: var(--primary); margin-bottom:14px;" id="modalRegistroIcon">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 22V12h6v10"/><path d="M3 9h18"/>
+            </svg>
+        </div>
+        <h3 id="modalRegistroTitle">Nova Encomenda</h3>
+        <p id="modalRegistroDesc">Preencha os dados abaixo para registrar no sistema.</p>
+        
+        <div class="grid-form" style="padding:0; border:none; margin-bottom:20px; background:transparent;">
+            <div class="form-group">
+                <label>Nome do Morador</label>
+                <input type="text" id="nome" placeholder="Ex: João Silva" autocomplete="off">
+                <div class="autocomplete-list" id="listNome"></div>
+            </div>
+            <div class="form-group">
+                <label>Apartamento</label>
+                <input type="text" id="ap" placeholder="Ex: 101-A" autocomplete="off">
+                <div class="autocomplete-list" id="listAp"></div>
+            </div>
+            <div class="form-group">
+                <label>Rastreio / NF</label>
+                <input type="text" id="rastreio" placeholder="Opcional" autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label>Entregador</label>
+                <input type="text" id="entregador" placeholder="Ex: Mercado Livre" autocomplete="off">
+                <div class="autocomplete-list" id="listEntregador"></div>
+            </div>
+        </div>
+        
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="fecharModalRegistro()">Cancelar</button>
+            <button class="btn btn-primary" id="btnSalvar" style="margin-bottom:0;" onclick="salvarRegistro()">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+                </svg>
+                Salvar Registro
+            </button>
+        </div>
     </div>
-
-    <div class="section-header">📑 Registro de Encomendas</div>
-    <div class="grid-form">
-        <div class="form-group"><label>Nome do Morador:</label><input type="text" id="nome" placeholder="EX: JOÃO SILVA"></div>
-        <div class="form-group"><label>Apartamento:</label><input type="text" id="ap" placeholder="EX: 101-A"></div>
-        <div class="form-group"><label>Rastreio / NF:</label><input type="text" id="rastreio" placeholder="OPCIONAL"></div>
-        <div class="form-group"><label>Entregador:</label><input type="text" id="entregador" placeholder="EX: MERCADO LIVRE"></div>
-    </div>
-
-    <button id="btnSalvar" class="btn-add" onclick="salvarRegistro()">💾 SALVAR NOVO REGISTRO</button>
-    
-    <button id="btnBaixaMassa" class="btn-mass-action" onclick="darBaixaEmMassa()">✅ DAR BAIXA NOS SELECIONADOS</button>
-
-    <div class="section-header">🔍 Consulta e Histórico</div>
-    
-    <div class="tab-container">
-        <button id="btnAbaPendente" class="tab active" onclick="mudarAba('pendente')">📦 NA PORTARIA</button>
-        <button id="btnAbaHistorico" class="tab" onclick="mudarAba('historico')">📑 TODO O HISTÓRICO</button>
-    </div>
-
-    <div class="search-box">
-        <input type="text" id="busca" class="search-input" placeholder="Pesquisar por nome ou apartamento..." onkeyup="filtrarTabela()">
-    </div>
-
-    <table id="tabelaRegistro">
-        <thead>
-            <tr>
-                <th style="width: 40px;"><input type="checkbox" id="selectAll" onclick="toggleTodos(this)"></th>
-                <th>Data Chegada</th>
-                <th>Morador / AP</th>
-                <th>Rastreio / NF</th>
-                <th>Status / Entrega</th>
-                <th>Ações</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
 </div>
+
+<!-- Modal: Baixa / Retirada -->
+<div class="modal-overlay" id="modalBaixa" onclick="fecharModalBaixa(event)">
+    <div class="modal">
+        <div class="modal-icon success">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        </div>
+        <h3>Confirmar Retirada</h3>
+        <p>Informe o nome de quem está retirando a(s) encomenda(s).</p>
+        <div class="form-group">
+            <label>Nome do Recebedor</label>
+            <input type="text" id="inputRecebedor" placeholder="Ex: JOÃO SILVA — AP 101">
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="fecharModalBaixa()">Cancelar</button>
+            <button class="btn btn-primary" id="btnConfirmarBaixa" onclick="confirmarBaixa()">Confirmar Retirada</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Opções Mobile -->
+<div class="modal-overlay" id="modalOpcoes" onclick="fecharModalOpcoes(event)">
+    <div class="modal" style="max-width: 340px; padding: 24px;">
+        <h3 style="margin-bottom: 20px; text-align: center;">Ações da Encomenda</h3>
+        <div id="modalOpcoesBtns" style="display:flex; flex-direction:column; gap:10px;">
+           <!-- rendered via JS -->
+        </div>
+        <button class="btn btn-secondary" style="width:100%; margin-top:14px;" onclick="fecharModalOpcoes()">Cancelar</button>
+    </div>
+</div>
+
+<!-- Modal: Excluir -->
+<div class="modal-overlay" id="modalExcluir" onclick="fecharModalExcluir(event)">
+    <div class="modal">
+        <div class="modal-icon danger">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+        </div>
+        <h3>Excluir Registro</h3>
+        <p>Tem certeza que deseja excluir este registro? Esta ação é permanente e não pode ser desfeita.</p>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="fecharModalExcluir()">Cancelar</button>
+            <button class="btn btn-danger-outline" onclick="confirmarExclusao()">Excluir Registro</button>
+        </div>
+    </div>
+</div>
+
+<!-- Container -->
+<div class="container">
+
+    <!-- Header -->
+    <div class="app-header">
+        <div class="logo-wrap">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 22V12h6v10"/><path d="M3 9h18"/>
+            </svg>
+        </div>
+        <div class="app-header-text">
+            <h1>Controle de Encomendas</h1>
+            <p>Sistema de Gerenciamento de Portaria</p>
+        </div>
+        <div class="header-actions">
+            <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" title="Modo Escuro"></button>
+            <a href="graficos.html" class="nav-btn">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+                </svg>
+                Relatorios
+            </a>
+        </div>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+
+        <!-- Stats -->
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-icon red">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="stat-label">Aguardando Retirada</div>
+                    <div class="stat-value alert" id="countPendente">—</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon green">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="stat-label">Entregues Hoje</div>
+                    <div class="stat-value success" id="countHoje">—</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Query section -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:22px; flex-wrap:wrap; gap:12px;">
+            <div class="section-header" style="margin-bottom:0; border-bottom:none; padding-bottom:0;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                Consulta e Histórico
+            </div>
+            
+            <div style="display:flex; flex-wrap:wrap; gap:8px;">
+                <button id="btnBaixaMassa" class="btn btn-warning" style="width:auto; margin:0; padding:10px 16px; flex:1;" onclick="abrirModalBaixaMassa()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    Baixa em Massa
+                </button>
+            
+                <button class="btn btn-primary" style="width:auto; margin:0; padding:10px 18px; flex:1;" onclick="abrirModalRegistro()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Nova Encomenda
+                </button>
+            </div>
+        </div>
+
+        <div class="tab-container">
+            <button id="btnAbaPendente" class="tab active" onclick="mudarAba('pendente')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/>
+                </svg>
+                Na Portaria
+            </button>
+            <button id="btnAbaHistorico" class="tab" onclick="mudarAba('historico')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                </svg>
+                Todo o Histórico
+            </button>
+        </div>
+
+        <div class="search-wrapper">
+            <div class="search-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+            </div>
+            <input type="text" id="busca" class="search-input" placeholder="Pesquisar por nome ou apartamento..." onkeyup="onBuscaKeyup()">
+        </div>
+
+        <div class="table-wrapper">
+            <table id="tabelaRegistro">
+                <thead>
+                    <tr>
+                        <th style="width:48px"><input type="checkbox" id="selectAll" onclick="toggleTodos(this)"></th>
+                        <th>Data de Chegada</th>
+                        <th>Morador / Apartamento</th>
+                        <th>Rastreio / NF</th>
+                        <th>Status</th>
+                        <th>Acoes</th>
+                    </tr>
+                </thead>
+                <tbody id="tbodyRegistro">
+                    <tr><td colspan="6">
+                        <div class="empty-state">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                            <p>Carregando registros...</p>
+                        </div>
+                    </td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div id="paginacaoContainer"></div>
+
+    </div><!-- end .content -->
+</div><!-- end .container -->
 
 <script>
     const SUPABASE_URL = 'https://qqpcobadyalpynwcsfxl.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFxcGNvYmFkeWFscHlud2NzZnhsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkzNTk1MTIsImV4cCI6MjA4NDkzNTUxMn0.i2pjAhMdsX4H0R78lFkV259dEakhaDuGe0ksTHlQ7ns';
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    let dadosCompletos = [];
-    let idEdicao = null;
-    let abaAtual = 'pendente'; 
-    let salvando = false;
+    const ITENS_POR_PAGINA = 20;
 
-    window.onload = carregarDados;
+    let dadosCompletos  = [];
+    let dadosFiltrados  = [];
+    let idEdicao        = null;
+    let abaAtual        = 'pendente';
+    let salvando        = false;
+    let paginaAtual     = 1;
+    let modalBaixaIds   = [];
+    let modalExcluirId  = null;
 
+    // ── Inline SVGs used in JS ───────────────────────────────────────────────
+    const svgSave    = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>`;
+    const svgRefresh = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.1"/></svg>`;
+    const svgCheck   = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+    const svgEdit    = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+    const svgTrash   = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>`;
+    const svgChevL   = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>`;
+    const svgChevR   = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>`;
+    const svgToastOk = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#06d6a0" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
+    const svgToastEr = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef233c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
+
+    // ── Init ─────────────────────────────────────────────────────────────────
+    window.onload = async () => {
+        await carregarDados();
+        setupAutocomplete('nome', 'listNome', 'nome_morador');
+        setupAutocomplete('ap', 'listAp', 'apartamento');
+        setupAutocomplete('entregador', 'listEntregador', 'entregador');
+    };
+
+    function setupAutocomplete(inputId, listId, field) {
+        const input = document.getElementById(inputId);
+        const list = document.getElementById(listId);
+
+        input.addEventListener('input', () => {
+            const val = input.value.trim().toUpperCase();
+            if (val.length < 3) {
+                list.style.display = 'none';
+                return;
+            }
+            
+            const distinct = [...new Set(
+                dadosCompletos
+                  .map(i => (i[field] || '').toUpperCase())
+                  .filter(n => n && n.includes(val))
+            )].slice(0, 6);
+            
+            if (distinct.length === 0) {
+                list.style.display = 'none';
+                return;
+            }
+
+            list.innerHTML = distinct.map(str => `<div class="autocomplete-item">${str}</div>`).join('');
+            list.style.display = 'block';
+
+            list.querySelectorAll('.autocomplete-item').forEach((elem) => {
+                elem.onclick = () => {
+                    input.value = elem.textContent;
+                    list.style.display = 'none';
+                };
+            });
+        });
+
+        document.addEventListener('click', (e) => {
+            if (e.target !== input && !list.contains(e.target)) {
+                list.style.display = 'none';
+            }
+        });
+    }
+
+    document.getElementById('inputRecebedor').addEventListener('keydown', e => {
+        if (e.key === 'Enter')  confirmarBaixa();
+        if (e.key === 'Escape') fecharModalBaixa();
+    });
+
+    // ── Data ─────────────────────────────────────────────────────────────────
     async function carregarDados() {
-        const { data, error } = await _supabase.from('encomendas').select('*').order('created_at', { ascending: false });
-        if (data) {
-            dadosCompletos = data;
-            atualizarStats(data);
-            filtrarTabela(); 
+        let allData = [];
+        let page = 0;
+        let limit = 1000;
+        let hasMore = true;
+
+        const btnRefreshIcon = document.getElementById('tbodyRegistro');
+        if (dadosCompletos.length === 0 && btnRefreshIcon) {
+             btnRefreshIcon.innerHTML = `<tr><td colspan="6"><div class="empty-state"><p>Carregando registros...</p></div></td></tr>`;
+        }
+
+        while (hasMore) {
+            const { data } = await _supabase
+                .from('encomendas')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .range(page * limit, (page + 1) * limit - 1);
+
+            if (data) {
+                allData = allData.concat(data);
+                if (data.length < limit) hasMore = false;
+                else page++;
+            } else {
+                break;
+            }
+        }
+
+        if (allData.length >= 0) {
+            dadosCompletos = allData;
+            atualizarStats(allData);
+            filtrarTabela();
         }
     }
 
     function atualizarStats(lista) {
         const pendentes = lista.filter(i => !i.recebedor).length;
         const hoje = new Date().toLocaleDateString('pt-BR');
-        const entreguesHoje = lista.filter(i => i.recebedor && i.data_baixa && i.data_baixa.includes(hoje)).length;
-        document.getElementById('countPendente').innerText = pendentes;
-        document.getElementById('countHoje').innerText = entreguesHoje;
+        const entreguesHoje = lista.filter(i =>
+            i.recebedor && i.data_baixa && i.data_baixa.includes(hoje)
+        ).length;
+        document.getElementById('countPendente').textContent = pendentes;
+        document.getElementById('countHoje').textContent = entreguesHoje;
     }
 
+    // ── Save / Edit ───────────────────────────────────────────────────────────
     async function salvarRegistro() {
         if (salvando) return;
         const dados = {
             nome_morador: document.getElementById('nome').value.trim().toUpperCase(),
-            apartamento: document.getElementById('ap').value.trim().toUpperCase(),
-            rastreio_nf: document.getElementById('rastreio').value.trim().toUpperCase(),
-            entregador: document.getElementById('entregador').value.trim().toUpperCase()
+            apartamento:  document.getElementById('ap').value.trim().toUpperCase(),
+            rastreio_nf:  document.getElementById('rastreio').value.trim().toUpperCase(),
+            entregador:   document.getElementById('entregador').value.trim().toUpperCase()
         };
-        if (!dados.nome_morador || !dados.apartamento) return alert("⚠️ NOME E AP SÃO OBRIGATÓRIOS!");
+        if (!dados.nome_morador || !dados.apartamento) {
+            mostrarToast('Nome e apartamento são obrigatórios', 'error');
+            return;
+        }
 
         salvando = true;
         const btn = document.getElementById('btnSalvar');
         btn.disabled = true;
-        btn.innerText = "⌛ PROCESSANDO...";
+        btn.innerHTML = `<span class="spinner"></span> Processando...`;
 
         if (idEdicao) {
             await _supabase.from('encomendas').update(dados).eq('id', idEdicao);
             idEdicao = null;
+            mostrarToast('Registro atualizado com sucesso');
         } else {
             await _supabase.from('encomendas').insert([dados]);
+            mostrarToast('Encomenda registrada com sucesso');
         }
-        
-        limparCampos();
+
+        fecharModalRegistro();
         await carregarDados();
         salvando = false;
         btn.disabled = false;
-        btn.innerText = "💾 SALVAR NOVO REGISTRO";
     }
 
+    function abrirModalRegistro() {
+        limparCampos();
+        document.getElementById('modalRegistroTitle').textContent = 'Nova Encomenda';
+        document.getElementById('modalRegistroDesc').textContent = 'Preencha os dados abaixo para registrar no sistema.';
+        const btn = document.getElementById('btnSalvar');
+        btn.innerHTML = `${svgSave} Salvar Registro`;
+        btn.style.background = '';
+        btn.style.boxShadow = '';
+        document.getElementById('modalRegistro').classList.add('show');
+        setTimeout(() => document.getElementById('nome').focus(), 200);
+    }
+
+    function fecharModalRegistro(e) {
+        if (e && e.target !== document.getElementById('modalRegistro')) return;
+        document.getElementById('modalRegistro').classList.remove('show');
+        limparCampos();
+    }
+
+    function prepararEdicao(id) {
+        const item = dadosCompletos.find(i => i.id == id);
+        if (!item) return;
+        document.getElementById('nome').value      = item.nome_morador || '';
+        document.getElementById('ap').value        = item.apartamento  || '';
+        document.getElementById('rastreio').value  = item.rastreio_nf  || '';
+        document.getElementById('entregador').value = item.entregador  || '';
+        idEdicao = id;
+        
+        document.getElementById('modalRegistroTitle').textContent = 'Editar Encomenda';
+        document.getElementById('modalRegistroDesc').textContent = 'Altere as informações desta encomenda.';
+        const btn = document.getElementById('btnSalvar');
+        btn.innerHTML = `${svgRefresh} Atualizar Registro`;
+        btn.style.background  = 'linear-gradient(135deg, #fb8500, #d96e00)';
+        btn.style.boxShadow   = '0 4px 18px rgba(251,133,0,0.4)';
+        
+        document.getElementById('modalRegistro').classList.add('show');
+        setTimeout(() => document.getElementById('nome').focus(), 200);
+    }
+
+    function limparCampos() {
+        ['nome', 'ap', 'rastreio', 'entregador'].forEach(id => document.getElementById(id).value = '');
+        idEdicao = null;
+    }
+
+    // ── Tabs ─────────────────────────────────────────────────────────────────
     function mudarAba(aba) {
         abaAtual = aba;
-        document.getElementById('btnAbaPendente').className = aba === 'pendente' ? 'tab active' : 'tab';
+        paginaAtual = 1;
+        document.getElementById('btnAbaPendente').className  = aba === 'pendente'  ? 'tab active' : 'tab';
         document.getElementById('btnAbaHistorico').className = aba === 'historico' ? 'tab active' : 'tab';
         document.getElementById('selectAll').checked = false;
         filtrarTabela();
     }
 
+    // ── Filter & Render ───────────────────────────────────────────────────────
+    function onBuscaKeyup() {
+        paginaAtual = 1;
+        filtrarTabela();
+    }
+
     function filtrarTabela() {
         const termo = document.getElementById('busca').value.toUpperCase();
-        let filtrados = dadosCompletos.filter(i => i.nome_morador.includes(termo) || i.apartamento.includes(termo));
-        
+        dadosFiltrados = dadosCompletos.filter(i =>
+            (i.nome_morador || '').includes(termo) || (i.apartamento || '').includes(termo)
+        );
         if (abaAtual === 'pendente') {
-            filtrados = filtrados.filter(i => !i.recebedor);
+            dadosFiltrados = dadosFiltrados.filter(i => !i.recebedor);
         } else {
-            filtrados = filtrados.filter(i => !!i.recebedor);
+            dadosFiltrados = dadosFiltrados.filter(i => !!i.recebedor);
         }
-        
-        renderizarTabela(filtrados);
+        renderizarTabela();
     }
 
-    function renderizarTabela(lista) {
-        const tbody = document.querySelector("#tabelaRegistro tbody");
-        tbody.innerHTML = "";
-        lista.forEach((item) => {
-            const entregue = !!item.recebedor;
-            const dataFormatada = new Date(item.created_at).toLocaleDateString('pt-BR');
+    function renderizarTabela() {
+        let slice;
+        if (abaAtual === 'historico' && dadosFiltrados.length > ITENS_POR_PAGINA) {
+            const ini = (paginaAtual - 1) * ITENS_POR_PAGINA;
+            slice = dadosFiltrados.slice(ini, ini + ITENS_POR_PAGINA);
+        } else {
+            slice = dadosFiltrados;
+        }
 
-            tbody.innerHTML += `
-                <tr>
-                    <td>${!entregue ? `<input type="checkbox" class="check-item" value="${item.id}" onclick="atualizarInterface()">` : ''}</td>
-                    <td>${dataFormatada}</td>
-                    <td><b>${item.nome_morador}</b><br><small>AP: ${item.apartamento}</small></td>
-                    <td>${item.rastreio_nf || '---'}</td>
-                    <td><span class="${entregue ? 'status-entregue' : 'status-pendente'}">
-                        ${entregue ? 'RETIRADO POR: ' + item.recebedor + '<br><small>' + item.data_baixa + '</small>' : 'AGUARDANDO RETIRADA'}
-                    </span></td>
-                    <td>
-                        ${!entregue ? `<button class="btn-acao" onclick="darBaixaIndividual(${item.id})">✅</button>` : ''}
-                        <button class="btn-acao" onclick="prepararEdicao(${item.id})">✏️</button>
-                        <button class="btn-acao" onclick="excluirRegistro(${item.id})" style="color:red">🗑️</button>
-                    </td>
+        const tbody = document.getElementById('tbodyRegistro');
+
+        if (slice.length === 0) {
+            tbody.innerHTML = `
+                <tr><td colspan="6">
+                    <div class="empty-state">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/>
+                        </svg>
+                        <p>Nenhum registro encontrado</p>
+                        <small>${abaAtual === 'pendente' ? 'Não há encomendas aguardando retirada.' : 'Nenhum registro no histórico corresponde à sua busca.'}</small>
+                    </div>
+                </td></tr>`;
+        } else {
+            tbody.innerHTML = slice.map((item, idx) => {
+                const entregue  = !!item.recebedor;
+                const dataChegada = new Date(item.created_at).toLocaleDateString('pt-BR');
+                const delay = Math.min(idx * 0.04, 0.4);
+
+                const statusHtml = entregue
+                    ? `<span class="badge badge-delivered">${svgCheck.replace('17','12').replace('17','12')} RETIRADO</span>
+                       <small style="margin-top:5px;display:block;color:#6b7280">${item.recebedor}</small>
+                       <small style="color:#9ca3af;font-size:10px">${item.data_baixa || ''}</small>`
+                    : `<span class="badge badge-pending">AGUARDANDO</span>`;
+
+                const acoesHtml = `
+                    <div class="actions">
+                        ${!entregue ? `<button class="btn-icon confirm" title="Dar Baixa" onclick="darBaixaIndividual(${item.id})">${svgCheck}</button>` : ''}
+                        <button class="btn-icon edit" title="Editar" onclick="prepararEdicao(${item.id})">${svgEdit}</button>
+                        <button class="btn-icon del"  title="Excluir" onclick="abrirModalExcluir(${item.id})">${svgTrash}</button>
+                    </div>`;
+
+                const entregadorTag = item.entregador
+                    ? `<span class="tag">${item.entregador}</span>`
+                    : '';
+                const mobileRastreio = item.rastreio_nf 
+                    ? `<span class="tag mobile-only-tag">📦 ${item.rastreio_nf}</span>`
+                    : '';
+
+                return `<tr style="animation-delay:${delay}s; cursor: pointer;" id="tr-${item.id}"
+                    onclick="handleRowClick(event, ${item.id}, ${entregue})"
+                    ontouchstart="handleTouchStart(event, ${item.id}, ${entregue})"
+                    ontouchend="handleTouchEnd(event)"
+                    ontouchmove="handleTouchEnd(event)"
+                    onmousedown="handleTouchStart(event, ${item.id}, ${entregue})"
+                    onmouseup="handleTouchEnd(event)"
+                    onmouseleave="handleTouchEnd(event)">
+                    <td>${!entregue ? `<input type="checkbox" class="check-item" value="${item.id}" id="chk-${item.id}" onclick="atualizarInterface()">` : ''}</td>
+                    <td>${dataChegada}</td>
+                    <td><b>${item.nome_morador}</b><small>AP ${item.apartamento}</small><div>${entregadorTag}${mobileRastreio}</div></td>
+                    <td>${item.rastreio_nf || '<span style="color:#d1d5db">—</span>'}</td>
+                    <td>${statusHtml}</td>
+                    <td>${acoesHtml}</td>
                 </tr>`;
-        });
+            }).join('');
+        }
+
+        renderPaginacao();
         atualizarInterface();
     }
 
-    // FUNÇÃO QUE CONTROLA O BOTÃO LARANJA (BAIXA EM MASSA)
+    // ── Pagination ────────────────────────────────────────────────────────────
+    function renderPaginacao() {
+        const container = document.getElementById('paginacaoContainer');
+        if (abaAtual !== 'historico' || dadosFiltrados.length <= ITENS_POR_PAGINA) {
+            container.innerHTML = '';
+            return;
+        }
+
+        const totalPaginas  = Math.ceil(dadosFiltrados.length / ITENS_POR_PAGINA);
+        const ini = (paginaAtual - 1) * ITENS_POR_PAGINA + 1;
+        const fim = Math.min(paginaAtual * ITENS_POR_PAGINA, dadosFiltrados.length);
+
+        // Build page number range (show at most 5 pages around current)
+        const range = 5;
+        let start = Math.max(1, paginaAtual - Math.floor(range / 2));
+        let end   = Math.min(totalPaginas, start + range - 1);
+        if (end - start + 1 < range) start = Math.max(1, end - range + 1);
+
+        let pagesHtml = '';
+        if (start > 1)          pagesHtml += `<button class="page-btn" onclick="irParaPagina(1)">1</button>${start > 2 ? '<span style="padding:0 4px;color:#9ca3af">···</span>' : ''}`;
+        for (let i = start; i <= end; i++) {
+            pagesHtml += `<button class="page-btn${i === paginaAtual ? ' active' : ''}" onclick="irParaPagina(${i})">${i}</button>`;
+        }
+        if (end < totalPaginas) pagesHtml += `${end < totalPaginas - 1 ? '<span style="padding:0 4px;color:#9ca3af">···</span>' : ''}<button class="page-btn" onclick="irParaPagina(${totalPaginas})">${totalPaginas}</button>`;
+
+        container.innerHTML = `
+            <div class="pagination-wrap">
+                <span class="pagination-info">Exibindo ${ini}–${fim} de ${dadosFiltrados.length} registros</span>
+                <div class="pagination-controls">
+                    <button class="page-btn" onclick="irParaPagina(${paginaAtual - 1})" ${paginaAtual === 1 ? 'disabled' : ''}>${svgChevL}</button>
+                    ${pagesHtml}
+                    <button class="page-btn" onclick="irParaPagina(${paginaAtual + 1})" ${paginaAtual === totalPaginas ? 'disabled' : ''}>${svgChevR}</button>
+                </div>
+            </div>`;
+    }
+
+    function irParaPagina(p) {
+        const total = Math.ceil(dadosFiltrados.length / ITENS_POR_PAGINA);
+        if (p < 1 || p > total) return;
+        paginaAtual = p;
+        renderizarTabela();
+        document.querySelector('.table-wrapper').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // ── Mass / Individual baixa ───────────────────────────────────────────────
     function atualizarInterface() {
         const selecionados = document.querySelectorAll('.check-item:checked').length;
-        const btnMassa = document.getElementById('btnBaixaMassa');
+        if (selecionados === 0) isSelectionMode = false;
         
-        // Só mostra se houver marcados E estiver na aba de pendentes
+        const btn = document.getElementById('btnBaixaMassa');
         if (selecionados > 0 && abaAtual === 'pendente') {
-            btnMassa.style.display = 'block';
-            btnMassa.innerText = `✅ DAR BAIXA EM (${selecionados}) ITENS SELECIONADOS`;
+            btn.style.display = 'flex';
+            btn.innerHTML = `${svgCheck} Dar Baixa em (${selecionados}) ${selecionados === 1 ? 'Item' : 'Itens'} Selecionados`;
         } else {
-            btnMassa.style.display = 'none';
+            btn.style.display = 'none';
         }
-    }
-
-    async function darBaixaEmMassa() {
-        const selecionados = Array.from(document.querySelectorAll('.check-item:checked')).map(cb => cb.value);
-        const pessoa = prompt("NOME DE QUEM ESTÁ RETIRANDO:").toUpperCase();
-        if (pessoa && selecionados.length > 0) {
-            const agora = new Date().toLocaleString('pt-BR');
-            await _supabase.from('encomendas').update({ recebedor: pessoa, data_baixa: agora }).in('id', selecionados);
-            carregarDados();
-            document.getElementById('selectAll').checked = false;
-        }
-    }
-
-    async function darBaixaIndividual(id) {
-        const pessoa = prompt("NOME DE QUEM ESTÁ RETIRANDO:").toUpperCase();
-        if (pessoa) {
-            const agora = new Date().toLocaleString('pt-BR');
-            await _supabase.from('encomendas').update({ recebedor: pessoa, data_baixa: agora }).eq('id', id);
-            carregarDados();
-        }
-    }
-
-    function toggleTodos(source) {
+        
         document.querySelectorAll('.check-item').forEach(cb => {
-            if (cb.offsetParent !== null) { // Só marca os que estão visíveis (filtrados)
-                cb.checked = source.checked;
+            const tr = document.getElementById(`tr-${cb.value}`);
+            if (tr) {
+                if (cb.checked) tr.classList.add('selected-row');
+                else tr.classList.remove('selected-row');
             }
         });
+    }
+
+    function abrirModalBaixaMassa() {
+        const ids = Array.from(document.querySelectorAll('.check-item:checked')).map(cb => cb.value);
+        if (ids.length === 0) return;
+        modalBaixaIds = ids;
+        document.getElementById('inputRecebedor').value = '';
+        document.getElementById('modalBaixa').classList.add('show');
+        setTimeout(() => document.getElementById('inputRecebedor').focus(), 200);
+    }
+
+    function darBaixaIndividual(id) {
+        modalBaixaIds = [String(id)];
+        document.getElementById('inputRecebedor').value = '';
+        document.getElementById('modalBaixa').classList.add('show');
+        setTimeout(() => document.getElementById('inputRecebedor').focus(), 200);
+    }
+
+    function fecharModalBaixa(e) {
+        if (e && e.target !== document.getElementById('modalBaixa')) return;
+        document.getElementById('modalBaixa').classList.remove('show');
+        modalBaixaIds = [];
+    }
+
+    async function confirmarBaixa() {
+        const pessoa = document.getElementById('inputRecebedor').value.trim().toUpperCase();
+        if (!pessoa) { mostrarToast('Informe o nome do recebedor', 'error'); return; }
+        const btn = document.getElementById('btnConfirmarBaixa');
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner"></span> Processando...`;
+        const agora = new Date().toLocaleString('pt-BR');
+        await _supabase.from('encomendas').update({ recebedor: pessoa, data_baixa: agora }).in('id', modalBaixaIds);
+        const qtd = modalBaixaIds.length;
+        document.getElementById('modalBaixa').classList.remove('show');
+        modalBaixaIds = [];
+        btn.disabled = false;
+        btn.innerHTML = `${svgCheck} Confirmar Retirada`;
+        document.getElementById('selectAll').checked = false;
+        await carregarDados();
+        mostrarToast(`${qtd} encomenda${qtd > 1 ? 's entregues' : ' entregue'} com sucesso`);
+    }
+
+    // ── Mobile Actions Modal & Multi-select ───────────────────────────────────
+    let mobileActionId = null;
+    let pressTimer;
+    let isSelectionMode = false;
+
+    function handleTouchStart(e, id, entregue) {
+        if (window.innerWidth > 680) return;
+        if (entregue) return; 
+
+        if (e.touches && e.touches.length > 1) return;
+
+        pressTimer = window.setTimeout(() => {
+            isSelectionMode = true;
+            toggleSelectionMobile(id);
+            if (navigator.vibrate) navigator.vibrate(50);
+        }, 500);
+    }
+
+    function handleTouchEnd(e) {
+        if (pressTimer) clearTimeout(pressTimer);
+    }
+
+    function toggleSelectionMobile(id) {
+        const chk = document.getElementById(`chk-${id}`);
+        if (!chk) return;
+        chk.checked = !chk.checked;
         atualizarInterface();
     }
 
-    function prepararEdicao(id) {
-        const item = dadosCompletos.find(i => i.id == id);
-        if (item) {
-            document.getElementById('nome').value = item.nome_morador;
-            document.getElementById('ap').value = item.apartamento;
-            document.getElementById('rastreio').value = item.rastreio_nf;
-            document.getElementById('entregador').value = item.entregador;
-            idEdicao = id;
-            document.getElementById('btnSalvar').innerText = "🔄 ATUALIZAR REGISTRO";
-            document.getElementById('btnSalvar').style.backgroundColor = "#fb8c00";
-            window.scrollTo(0, 0);
+    function handleRowClick(event, id, entregue) {
+        if (window.innerWidth > 680) {
+            if (event.target.tagName !== 'INPUT' && !event.target.closest('button') && !entregue) {
+                toggleSelectionMobile(id);
+            }
+            return;
         }
+
+        if (event.target.tagName === 'INPUT' || event.target.closest('.check-item') || event.target.closest('button')) return;
+        
+        if (isSelectionMode) {
+            if (!entregue) toggleSelectionMobile(id);
+            return;
+        }
+        
+        mobileActionId = id;
+        const btns = document.getElementById('modalOpcoesBtns');
+        btns.innerHTML = '';
+        
+        if (!entregue) {
+            btns.innerHTML += `<button class="btn btn-primary" onclick="fecharModalOpcoes(); darBaixaIndividual(${id})" style="margin:0;">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Dar Baixa
+            </button>`;
+        }
+        
+        btns.innerHTML += `
+            <button class="btn btn-primary" style="background: linear-gradient(135deg, #fb8500, #d96e00); box-shadow: 0 4px 16px rgba(251,133,0,0.3); margin:0;" onclick="fecharModalOpcoes(); prepararEdicao(${id})">
+                ${svgEdit} Editar
+            </button>
+            <button class="btn btn-danger-outline" onclick="fecharModalOpcoes(); abrirModalExcluir(${id})" style="margin:0;">
+                ${svgTrash} Excluir
+            </button>
+        `;
+        
+        document.getElementById('modalOpcoes').classList.add('show');
     }
 
-    async function excluirRegistro(id) {
-        if (confirm("DESEJA EXCLUIR ESTE REGISTRO?")) {
-            await _supabase.from('encomendas').delete().eq('id', id);
-            carregarDados();
-        }
+    function fecharModalOpcoes(e) {
+        if (e && e.target !== document.getElementById('modalOpcoes')) return;
+        document.getElementById('modalOpcoes').classList.remove('show');
+        mobileActionId = null;
     }
 
-    function limparCampos() {
-        ['nome', 'ap', 'rastreio', 'entregador'].forEach(id => document.getElementById(id).value = "");
-        idEdicao = null;
+    // ── Delete ────────────────────────────────────────────────────────────────
+    function abrirModalExcluir(id) {
+        modalExcluirId = id;
+        document.getElementById('modalExcluir').classList.add('show');
     }
+
+    function fecharModalExcluir(e) {
+        if (e && e.target !== document.getElementById('modalExcluir')) return;
+        document.getElementById('modalExcluir').classList.remove('show');
+        modalExcluirId = null;
+    }
+
+    async function confirmarExclusao() {
+        if (!modalExcluirId) return;
+        await _supabase.from('encomendas').delete().eq('id', modalExcluirId);
+        document.getElementById('modalExcluir').classList.remove('show');
+        modalExcluirId = null;
+        await carregarDados();
+        mostrarToast('Registro excluído');
+    }
+
+    // ── Toggle all checkboxes ─────────────────────────────────────────────────
+    function toggleTodos(source) {
+        document.querySelectorAll('.check-item').forEach(cb => {
+            if (cb.offsetParent !== null) cb.checked = source.checked;
+        });
+        isSelectionMode = source.checked;
+        atualizarInterface();
+    }
+
+    // ── Toast ─────────────────────────────────────────────────────────────────
+    let _toastTimer;
+    function mostrarToast(msg, tipo = 'success') {
+        const toast = document.getElementById('toast');
+        toast.className = `toast ${tipo} show`;
+        toast.innerHTML = `${tipo === 'success' ? svgToastOk : svgToastEr}<span>${msg}</span>`;
+        clearTimeout(_toastTimer);
+        _toastTimer = setTimeout(() => toast.classList.remove('show'), 3800);
+    }
+
+    // ── Theme ─────────────────────────────────────────────────────────────────
+    const SVG_MOON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
+    const SVG_SUN  = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`;
+
+    function toggleTheme() {
+        const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('theme', next);
+        _syncThemeIcon();
+    }
+
+    function _syncThemeIcon() {
+        const btn  = document.getElementById('themeBtn');
+        const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+        if (btn) { btn.innerHTML = dark ? SVG_SUN : SVG_MOON; btn.title = dark ? 'Modo Claro' : 'Modo Escuro'; }
+    }
+
+    _syncThemeIcon();
 </script>
 </body>
 </html>

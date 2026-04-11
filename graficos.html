@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatórios — Sistema de Portaria</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <script>(function(){const t=localStorage.getItem('theme')||'light';document.documentElement.setAttribute('data-theme',t);})();</script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --primary:      #4A7AFF;
+            --primary-dark: #3F72E5;
+            --success:      #06d6a0;
+            --success-dark: #04b888;
+            --danger:       #ef233c;
+            --warning:      #fb8500;
+            --text:         #1E222D;
+            --text-muted:   #646A78;
+            --border:       #DDE2E8;
+            --bg:           #F0F3F7;
+            --bg-card:      #FFFFFF;
+            --transition:   background 0.22s ease, color 0.22s ease, border-color 0.22s ease;
+        }
+
+        /* ── Dark mode ─────────────────────────────────────────────────────── */
+        [data-theme="dark"] {
+            --primary:      #5B8AFF;
+            --primary-dark: #4A7AFF;
+            --success-dark: #05d4a0;
+            --danger:       #ff4d6a;
+            --text:         #E4E4E4;
+            --text-muted:   #878787;
+            --border:       #2C2C36;
+            --bg:           #111115;
+            --bg-card:      #1B1B22;
+            color-scheme: dark;
+        }
+
+        [data-theme="dark"] .app-header { background: linear-gradient(135deg, #1A2A55 0%, #111E3F 100%); }
+
+        [data-theme="dark"] .blob-1 { background: radial-gradient(circle,#4A7AFF,#1E2E6E); opacity:.22; }
+        [data-theme="dark"] .blob-2 { background: radial-gradient(circle,#3F72E5,#152060); opacity:.18; }
+        [data-theme="dark"] .blob-3 { background: radial-gradient(circle,#05d4a0,#024E3A); opacity:.14; }
+        [data-theme="dark"] .container { box-shadow: 0 6px 40px rgba(0,0,0,.55), 0 1px 3px rgba(0,0,0,.4); }
+
+        [data-theme="dark"] .kpi-icon.red    { background: rgba(255,77,106,.12); color: #ff4d6a; }
+        [data-theme="dark"] .kpi-icon.green  { background: rgba(5,212,160,.12);  color: #05d4a0; }
+        [data-theme="dark"] .kpi-value[style*="ef233c"] { color: #ff4d6a !important; }
+        [data-theme="dark"] .kpi-value[style*="04b888"] { color: #05d4a0 !important; }
+
+        body, .container, .content, .app-header,
+        .kpi-card, .chart-card, .chart-header,
+        .loading-wrap, .section-header {
+            transition: var(--transition);
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            min-height: 100vh;
+            background: var(--bg);
+            padding: 32px 16px 48px;
+            color: var(--text);
+            overflow-x: hidden;
+        }
+
+        /* Ambient blobs */
+        .blob { position: fixed; border-radius: 50%; filter: blur(100px); opacity: 0.16; pointer-events: none; z-index: 0; }
+        .blob-1 { width: 520px; height: 520px; background: radial-gradient(circle, #4A7AFF, #a5c0ff); top: -200px; left: -200px; animation: drift 14s ease-in-out infinite alternate; }
+        .blob-2 { width: 620px; height: 620px; background: radial-gradient(circle, #3F72E5, #c4d8ff); bottom: -240px; right: -240px; animation: drift 18s ease-in-out infinite alternate-reverse; }
+        .blob-3 { width: 300px; height: 300px; background: radial-gradient(circle, #06d6a0, #a7f3e0); top: 40%; left: 55%; animation: drift 11s ease-in-out infinite alternate; }
+        @keyframes drift { from { transform: translate(0,0) scale(1); } to { transform: translate(35px,28px) scale(1.12); } }
+
+        /* Container */
+        .container {
+            position: relative; z-index: 1;
+            max-width: 1240px; margin: 0 auto;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            box-shadow: 0 4px 28px rgba(74,122,255,0.07), 0 1px 4px rgba(0,0,0,0.05);
+            overflow: hidden;
+            animation: slideUp 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(38px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Header */
+        .app-header {
+            display: flex; align-items: center; gap: 14px;
+            padding: 22px 36px;
+            background: linear-gradient(135deg, #4A7AFF 0%, #3F72E5 100%);
+        }
+        .back-btn {
+            display: inline-flex; align-items: center; gap: 7px;
+            padding: 8px 15px;
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.28);
+            border-radius: 10px;
+            color: white;
+            text-decoration: none;
+            font-size: 12px; font-weight: 500; letter-spacing: 0.1px;
+            transition: background 0.18s, transform 0.18s;
+            flex-shrink: 0;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.26); transform: translateX(-2px); }
+        .theme-btn {
+            width: 38px; height: 38px;
+            border: 1px solid rgba(255,255,255,0.28);
+            border-radius: 10px;
+            background: rgba(255,255,255,0.15);
+            color: white; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.18s, transform 0.18s;
+            flex-shrink: 0; margin-left: auto;
+        }
+        .theme-btn:hover { background: rgba(255,255,255,0.26); transform: scale(1.06); }
+        .logo-wrap {
+            width: 44px; height: 44px; border-radius: 13px;
+            background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.28);
+            display: flex; align-items: center; justify-content: center;
+            color: white; flex-shrink: 0;
+        }
+        .header-title h1 { font-size: 18px; font-weight: 700; color: white; letter-spacing: 0.2px; }
+        .header-title p  { font-size: 11px; color: rgba(255,255,255,0.62); margin-top: 3px; }
+        .header-meta {
+            margin-left: auto;
+            font-size: 11px; color: rgba(255,255,255,0.55);
+            text-align: right; line-height: 1.6; flex-shrink: 0;
+        }
+
+        /* Content */
+        .content { background: var(--bg); padding: 30px 36px 40px; }
+
+        /* Loading */
+        .loading-wrap {
+            display: flex; align-items: center; justify-content: center;
+            padding: 90px 0; gap: 14px;
+            color: var(--text-muted); font-size: 14px; font-weight: 500;
+        }
+        .spinner {
+            width: 22px; height: 22px;
+            border: 2.5px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.75s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* KPI grid */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 14px;
+            margin-bottom: 28px;
+        }
+        .kpi-card {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 18px; padding: 20px 20px;
+            display: flex; align-items: center; gap: 15px;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.04);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            animation: fadeUp 0.5s ease both;
+        }
+        .kpi-card:nth-child(1) { animation-delay: 0.05s; }
+        .kpi-card:nth-child(2) { animation-delay: 0.12s; }
+        .kpi-card:nth-child(3) { animation-delay: 0.18s; }
+        .kpi-card:nth-child(4) { animation-delay: 0.24s; }
+        .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(74,122,255,0.1); }
+        .kpi-icon {
+            width: 48px; height: 48px; border-radius: 14px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .kpi-icon.blue   { background: rgba(74,122,255,0.1);  color: var(--primary); }
+        .kpi-icon.red    { background: rgba(239,35,60,0.1);   color: var(--danger); }
+        .kpi-icon.green  { background: rgba(6,214,160,0.12);  color: var(--success-dark); }
+        .kpi-icon.orange { background: rgba(251,133,0,0.1);   color: var(--warning); }
+        .kpi-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-muted); }
+        .kpi-value { font-size: 30px; font-weight: 700; line-height: 1.15; margin-top: 4px; color: var(--text); }
+        .kpi-sub   { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Section header */
+        .section-header {
+            display: flex; align-items: center; gap: 9px;
+            font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px;
+            color: var(--primary);
+            padding-bottom: 13px;
+            border-bottom: 2px solid rgba(74,122,255,0.11);
+            margin-bottom: 18px; margin-top: 30px;
+        }
+
+        /* Charts grid */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 18px;
+        }
+        .chart-card {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 18px; overflow: hidden;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.04);
+            display: flex; flex-direction: column;
+            animation: fadeUp 0.55s ease both;
+        }
+        .chart-card.full { grid-column: 1 / -1; }
+        .chart-header {
+            padding: 18px 22px 14px;
+            border-bottom: 1px solid var(--border);
+        }
+        .chart-header h3 { font-size: 14px; font-weight: 600; color: var(--text); }
+        .chart-header p  { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+        .chart-body {
+            padding: 18px 20px 22px;
+            position: relative; flex: 1;
+            min-height: 260px;
+        }
+        .chart-body.tall { min-height: 320px; }
+        .chart-body.sq   { min-height: 360px; }
+        .chart-body.xl   { min-height: 420px; }
+
+        /* Responsive */
+        @media (max-width: 780px) {
+            body { padding: 12px 10px 30px; }
+            .app-header { padding: 18px 20px; flex-wrap: wrap; }
+            .content { padding: 20px 16px 30px; }
+            .charts-grid { grid-template-columns: 1fr; }
+            .chart-card.full { grid-column: 1; }
+            .header-meta { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="blob blob-1"></div>
+<div class="blob blob-2"></div>
+<div class="blob blob-3"></div>
+
+<div class="container">
+
+    <!-- Header -->
+    <div class="app-header">
+        <a href="index.html" class="back-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            Portaria
+        </a>
+        <div class="logo-wrap">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+            </svg>
+        </div>
+        <div class="header-title">
+            <h1>Relatórios &amp; Análise</h1>
+            <p>Dados em tempo real — Sistema de Portaria</p>
+        </div>
+        <div class="header-meta" id="lastUpdate"></div>
+        <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" title="Modo Escuro"></button>
+    </div>
+
+    <div class="content">
+
+        <!-- Loading -->
+        <div class="loading-wrap" id="loadingWrap">
+            <div class="spinner"></div>
+            Carregando dados...
+        </div>
+
+        <!-- Main (hidden until ready) -->
+        <div id="mainContent" style="display:none">
+
+            <!-- KPIs -->
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-icon blue">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="kpi-label">Total de Encomendas</div>
+                        <div class="kpi-value" id="kpiTotal">—</div>
+                        <div class="kpi-sub">Todos os registros</div>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon red">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="kpi-label">Aguardando Retirada</div>
+                        <div class="kpi-value" id="kpiPendente" style="color:#ef233c">—</div>
+                        <div class="kpi-sub" id="kpiPendentePct"></div>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon green">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="kpi-label">Entregues</div>
+                        <div class="kpi-value" id="kpiEntregue" style="color:#04b888">—</div>
+                        <div class="kpi-sub" id="kpiMes"></div>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon orange">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="kpi-label">Tempo Médio de Retirada</div>
+                        <div class="kpi-value" id="kpiAvg">—</div>
+                        <div class="kpi-sub">Após chegada na portaria</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section: Temporal -->
+            <div class="section-header">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+                </svg>
+                Evolução Temporal
+            </div>
+
+            <div class="charts-grid">
+                <div class="chart-card full" style="animation-delay:.08s">
+                    <div class="chart-header">
+                        <h3>Total de Encomendas por Dia</h3>
+                        <p>Encomendas recebidas vs entregues nos últimos 30 dias</p>
+                    </div>
+                    <div class="chart-body tall"><canvas id="chartDia"></canvas></div>
+                </div>
+
+                <div class="chart-card full" style="animation-delay:.16s">
+                    <div class="chart-header">
+                        <h3>Total de Encomendas por Mês</h3>
+                        <p>Volume mensal dos últimos 12 meses — barra mais escura = mês atual</p>
+                    </div>
+                    <div class="chart-body tall"><canvas id="chartMes"></canvas></div>
+                </div>
+
+                <div class="chart-card full" style="animation-delay:.20s">
+                    <div class="chart-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                        <div>
+                            <h3>Movimentação por Hora</h3>
+                            <p>Encomendas recebidas vs entregues no dia selecionado</p>
+                        </div>
+                        <div>
+                            <input type="date" id="datePickerHora" style="padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text); font-family: inherit; font-size: 12px; outline: none; cursor:pointer;" title="Selecionar dia">
+                        </div>
+                    </div>
+                    <div class="chart-body tall"><canvas id="chartHora"></canvas></div>
+                </div>
+            </div>
+
+            <!-- Section: Distribuição -->
+            <div class="section-header">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
+                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                </svg>
+                Distribuição
+            </div>
+
+            <div class="charts-grid">
+                <div class="chart-card" style="animation-delay:.22s">
+                    <div class="chart-header">
+                        <h3>Aguardando vs Retiradas Hoje</h3>
+                        <p>Pendentes (total) vs retiradas no dia de hoje</p>
+                    </div>
+                    <div class="chart-body sq"><canvas id="chartStatus"></canvas></div>
+                </div>
+
+                <div class="chart-card" style="animation-delay:.28s">
+                    <div class="chart-header">
+                        <h3>Por Transportadora</h3>
+                        <p>Distribuição por entregador / transportadora registrada</p>
+                    </div>
+                    <div class="chart-body sq"><canvas id="chartTransp"></canvas></div>
+                </div>
+            </div>
+
+            <!-- Section: Apartamentos -->
+            <div class="section-header">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 22V12h6v10"/><path d="M3 9h18"/>
+                </svg>
+                Por Apartamento
+            </div>
+
+            <div class="charts-grid">
+                <div class="chart-card full" style="animation-delay:.34s">
+                    <div class="chart-header">
+                        <h3>Apartamentos com Mais Encomendas</h3>
+                        <p>Top 15 apartamentos — volume total acumulado</p>
+                    </div>
+                    <div class="chart-body xl"><canvas id="chartAp"></canvas></div>
+                </div>
+            </div>
+
+        </div><!-- /#mainContent -->
+    </div><!-- /.content -->
+</div><!-- /.container -->
+
+<script>
+    const SUPABASE_URL = 'https://qqpcobadyalpynwcsfxl.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFxcGNvYmFkeWFscHlud2NzZnhsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkzNTk1MTIsImV4cCI6MjA4NDkzNTUxMn0.i2pjAhMdsX4H0R78lFkV259dEakhaDuGe0ksTHlQ7ns';
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // ── Chart.js globals ──────────────────────────────────────────────────────
+    Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
+    Chart.defaults.font.size   = 12;
+
+    const PALETTE = [
+        '#4A7AFF', '#06d6a0', '#fb8500', '#ef233c',
+        '#7c3aed', '#14b8a6', '#f59e0b', '#ec4899',
+        '#6366f1', '#06b6d4', '#84cc16', '#f97316',
+    ];
+    const ANIM = { duration: 800, easing: 'easeOutQuart' };
+
+    // ── Theme helpers ─────────────────────────────────────────────────────────
+    let _cachedData = null;
+    let _instances  = {};
+
+    function isDark() {
+        return document.documentElement.getAttribute('data-theme') === 'dark';
+    }
+
+    // Returns theme-specific chart config tokens
+    function getT() {
+        return isDark() ? {
+            tooltip: {
+                backgroundColor: '#23232E',
+                titleColor     : '#E4E4E4',
+                bodyColor      : '#878787',
+                borderColor    : '#2C2C36',
+                borderWidth: 1, padding: 13, cornerRadius: 11,
+                displayColors: true, boxWidth: 10, boxHeight: 10, boxPadding: 4,
+            },
+            grid       : '#252530',
+            text       : '#878787',
+            barBlue    : 'rgba(91,138,255,0.80)',
+            barGreen   : 'rgba(6,214,160,0.72)',
+            barBlueFull: 'rgba(91,138,255,0.95)',
+            doughnutBorder: '#1B1B22',
+        } : {
+            tooltip: {
+                backgroundColor: '#FFFFFF',
+                titleColor     : '#2E2E2E',
+                bodyColor      : '#6F6F6F',
+                borderColor    : '#E8E8E6',
+                borderWidth: 1, padding: 13, cornerRadius: 11,
+                displayColors: true, boxWidth: 10, boxHeight: 10, boxPadding: 4,
+            },
+            grid       : '#EDEDEB',
+            text       : '#6F6F6F',
+            barBlue    : 'rgba(74,122,255,0.75)',
+            barGreen   : 'rgba(6,214,160,0.70)',
+            barBlueFull: 'rgba(74,122,255,0.92)',
+            doughnutBorder: '#FFFFFF',
+        };
+    }
+
+    function scaleX()  { return { grid: { display: false }, border: { display: false } }; }
+    function scaleY()  { return { grid: { color: getT().grid, lineWidth: 1 }, border: { display: false }, ticks: { precision: 0, color: getT().text }, beginAtZero: true }; }
+
+    // ── Boot ──────────────────────────────────────────────────────────────────
+    window.onload = async () => {
+        let allData = [];
+        let page = 0;
+        let limit = 1000;
+        let hasMore = true;
+        let fetchError = null;
+
+        while (hasMore) {
+            const { data, error } = await _supabase
+                .from('encomendas')
+                .select('created_at, recebedor, data_baixa, apartamento, entregador')
+                .order('created_at', { ascending: true })
+                .range(page * limit, (page + 1) * limit - 1);
+
+            if (error) { fetchError = error; break; }
+            if (data) {
+                allData = allData.concat(data);
+                if (data.length < limit) hasMore = false;
+                else page++;
+            } else {
+                break;
+            }
+        }
+
+        const data = allData;
+        const error = fetchError;
+
+        if (error) {
+            document.getElementById('loadingWrap').innerHTML =
+                `<span style="color:#ef233c;font-weight:600">Erro ao carregar dados: ${error.message || 'desconhecido'}</span>`;
+            return;
+        }
+
+        _cachedData = data;
+        document.getElementById('loadingWrap').style.display = 'none';
+        document.getElementById('mainContent').style.display = 'block';
+
+        const now = new Date();
+        document.getElementById('lastUpdate').innerHTML =
+            `Atualizado às ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}<br>
+             ${data.length.toLocaleString('pt-BR')} registros carregados`;
+
+        // Set default date for hourly chart
+        const tzOffset = now.getTimezoneOffset() * 60000; 
+        const todayIso = new Date(now.getTime() - tzOffset).toISOString().split('T')[0];
+        const pickerHora = document.getElementById('datePickerHora');
+        if (!pickerHora.value) pickerHora.value = todayIso;
+        
+        pickerHora.addEventListener('change', () => {
+            if (_instances.hora) _instances.hora.destroy();
+            buildChartHora(_cachedData);
+        });
+
+        buildKPIs(data);
+        _buildAllCharts(data);
+        _syncThemeIcon();
+    };
+
+    function _buildAllCharts(data) {
+        // Destroy existing instances before rebuilding
+        Object.values(_instances).forEach(c => c?.destroy());
+        _instances = {};
+        Chart.defaults.color = getT().text;
+
+        buildChartPorDia(data);
+        buildChartPorMes(data);
+        buildChartHora(data);
+        buildChartStatus(data);
+        buildChartTransportadora(data);
+        buildChartApartamentos(data);
+    }
+
+    // ── KPIs ──────────────────────────────────────────────────────────────────
+    function buildKPIs(data) {
+        const total     = data.length;
+        const pendentes = data.filter(i => !i.recebedor).length;   // all-time pending
+        const now       = new Date();
+        const hojeBr = now.toLocaleDateString('pt-BR');
+
+        // Entregues hoje: data_baixa = today's local date
+        const entreguesHoje = data.filter(item => 
+            item.recebedor && item.data_baixa && item.data_baixa.includes(hojeBr)
+        ).length;
+
+        document.getElementById('kpiTotal').textContent       = total.toLocaleString('pt-BR');
+        document.getElementById('kpiPendente').textContent    = pendentes.toLocaleString('pt-BR');
+        document.getElementById('kpiPendentePct').textContent = total
+            ? `${((pendentes / total) * 100).toFixed(1)}% do total` : '';
+        document.getElementById('kpiEntregue').textContent    = entreguesHoje.toLocaleString('pt-BR');
+        document.getElementById('kpiMes').textContent         = 'retiradas hoje';
+
+        const avgH = calcAvgWaitHours(data);
+        document.getElementById('kpiAvg').textContent = avgH !== null
+            ? (avgH < 24 ? `${avgH.toFixed(1)} h` : `${(avgH / 24).toFixed(1)} dias`)
+            : 'N/A';
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+    function calcAvgWaitHours(data) {
+        const delivered = data.filter(i => i.recebedor && i.data_baixa);
+        if (!delivered.length) return null;
+        let sum = 0, count = 0;
+        delivered.forEach(item => {
+            const diff = parseBRDate(item.data_baixa) - new Date(item.created_at);
+            if (diff > 0 && diff < 90 * 86_400_000) { sum += diff; count++; }
+        });
+        return count ? sum / count / 3_600_000 : null;
+    }
+
+    function parseBRDate(str) {
+        if (!str) return null;
+        const parts = str.trim().split(/[,\s]+/);
+        const datePart = parts[0];
+        if (!datePart) return null;
+        const [d, m, y] = datePart.split('/');
+        const timePart = parts[1] || '00:00:00';
+        const [hh = 0, mm = 0, ss = 0] = timePart.split(':');
+        return new Date(+y, +m - 1, +d, +hh, +mm, +ss);
+    }
+
+    function normalizeCarrier(raw) {
+        if (!raw || raw.trim() === '') return 'Não Informado';
+        const s = raw.trim().toUpperCase();
+        if (s.includes('MERCADO LIVRE') || s.includes(' LIVRE') || s === 'ML') return 'Mercado Livre';
+        if (s.includes('SHOPEE') || s.includes('SHOPI'))  return 'Shopee';
+        if (s.includes('AMAZON'))                          return 'Amazon';
+        if (s.includes('CORREIO') || s.includes('SEDEX') || s.includes('PAC') || /^[A-Z]{2}\d{9}BR$/.test(s)) return 'Correios';
+        if (s.includes('IFOOD')  || s.includes('I FOOD')) return 'iFood';
+        if (s.includes('RAPPI'))  return 'Rappi';
+        if (s.includes('LOGGI'))  return 'Loggi';
+        if (s.includes('JADLOG') || s.includes('JAD LOG')) return 'JadLog';
+        if (s.includes('DHL'))    return 'DHL';
+        if (s.includes('FEDEX'))  return 'FedEx';
+        if (s.includes('TOTAL EXPRESS')) return 'Total Express';
+        if (s.includes('AZUL CARGO'))    return 'Azul Cargo';
+        if (/\d{7,}/.test(s))    return 'Motoboy / Entregador';
+        const t = raw.trim();
+        return t.length > 32 ? t.slice(0, 30) + '…' : t;
+    }
+
+    // ── Chart 1: Por Dia ──────────────────────────────────────────────────────
+    function buildChartPorDia(data) {
+        const tv    = getT();
+        const today = new Date();
+        const labels = [], mapR = {}, mapD = {};
+
+        // Build 30-day window (local dates)
+        for (let i = 29; i >= 0; i--) {
+            const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
+            const key = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+            labels.push(key); mapR[key] = 0; mapD[key] = 0;
+        }
+
+        // "Recebidas" keyed by created_at local date
+        data.forEach(item => {
+            const d   = new Date(item.created_at);
+            const key = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+            if (key in mapR) mapR[key]++;
+        });
+
+        // "Retiradas" keyed by data_baixa local date (parseBRDate)
+        data.forEach(item => {
+            if (!item.data_baixa) return;
+            const d = parseBRDate(item.data_baixa);
+            if (!d) return;
+            const key = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+            if (key in mapD) mapD[key]++;
+        });
+
+        const received  = labels.map(k => mapR[k]);
+        const delivered = labels.map(k => mapD[k]);
+
+        _instances.dia = new Chart(document.getElementById('chartDia'), {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [
+                    { label: 'Recebidas', data: received,  backgroundColor: tv.barBlue,  borderRadius: 6, borderSkipped: false, order: 2 },
+                    { label: 'Retiradas', data: delivered, backgroundColor: tv.barGreen, borderRadius: 6, borderSkipped: false, order: 1 },
+                ],
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true, position: 'top', align: 'end',
+                        labels: { usePointStyle: true, pointStyleWidth: 10, padding: 18, font: { size: 12 }, color: tv.text },
+                    },
+                    tooltip: { ...tv.tooltip },
+                },
+                scales: {
+                    x: {
+                        grid: { display: false }, border: { display: false },
+                        ticks: { autoSkip: false, maxRotation: 45, minRotation: 0, font: { size: 10 }, color: tv.text },
+                    },
+                    y: scaleY(),
+                },
+                animation: ANIM,
+            },
+        });
+    }
+
+    // ── Chart 2: Por Mês ──────────────────────────────────────────────────────
+    function buildChartPorMes(data) {
+        const tv = getT();
+        const now = new Date();
+        const labels = [], values = [];
+
+        for (let i = 11; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const [y, m] = [d.getFullYear(), d.getMonth()];
+            const label = d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' })
+                .toUpperCase().replace(/\. DE |\./g, '/').replace(/\/$/, '');
+            const count = data.filter(item => {
+                const id = new Date(item.created_at);
+                return id.getFullYear() === y && id.getMonth() === m;
+            }).length;
+            labels.push(label);
+            values.push(count);
+        }
+
+        const max = Math.max(...values) || 1;
+        const base = isDark() ? [91, 138, 255] : [74, 122, 255];
+
+        _instances.mes = new Chart(document.getElementById('chartMes'), {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Encomendas',
+                    data: values,
+                    backgroundColor: values.map((v, i) =>
+                        i === values.length - 1
+                            ? tv.barBlueFull
+                            : `rgba(${base.join(',')},${(0.28 + 0.48 * (v / max)).toFixed(2)})`
+                    ),
+                    borderRadius: 8, borderSkipped: false, minBarLength: 4,
+                }],
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { ...tv.tooltip } },
+                scales: { x: scaleX(), y: scaleY() },
+                animation: ANIM,
+            },
+        });
+    }
+
+    // ── Chart: Por Hora ───────────────────────────────────────────────────────
+    function buildChartHora(data) {
+        const tv = getT();
+        const selectedDateStr = document.getElementById('datePickerHora').value;
+        if (!selectedDateStr) return;
+        
+        const [sy, sm, sd] = selectedDateStr.split('-');
+        const targetDateKey = `${sd}/${sm}/${sy}`;
+        const selectedYear = parseInt(sy, 10);
+        const selectedMonth = parseInt(sm, 10) - 1;
+        const selectedDay = parseInt(sd, 10);
+        
+        const receivedHours = Array(24).fill(0);
+        const deliveredHours = Array(24).fill(0);
+        
+        data.forEach(item => {
+            // Check Recebidas (created_at)
+            if (item.created_at) {
+                const cDate = new Date(item.created_at);
+                if (cDate.getFullYear() === selectedYear && cDate.getMonth() === selectedMonth && cDate.getDate() === selectedDay) {
+                    const h = cDate.getHours();
+                    if (h >= 0 && h < 24) receivedHours[h]++;
+                }
+            }
+
+            // Check Retiradas (data_baixa)
+            if (item.recebedor && item.data_baixa) {
+                const parts = item.data_baixa.trim().split(/[,\s]+/);
+                const datePart = parts[0];
+                if (datePart === targetDateKey) {
+                    const timePart = parts[1] || '00:00:00';
+                    const [hh] = timePart.split(':');
+                    const h = parseInt(hh, 10);
+                    if (!isNaN(h) && h >= 0 && h < 24) {
+                        deliveredHours[h]++;
+                    }
+                }
+            }
+        });
+
+        const labels = Array.from({length: 24}, (_, i) => `${String(i).padStart(2,'0')}h`);
+
+        _instances.hora = new Chart(document.getElementById('chartHora'), {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [
+                    { label: 'Recebidas', data: receivedHours,  backgroundColor: tv.barBlue,  borderRadius: 6, borderSkipped: false, order: 2 },
+                    { label: 'Retiradas', data: deliveredHours, backgroundColor: tv.barGreen, borderRadius: 6, borderSkipped: false, order: 1 },
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true, position: 'top', align: 'end',
+                        labels: { usePointStyle: true, pointStyleWidth: 10, padding: 18, font: { size: 12 }, color: tv.text },
+                    },
+                    tooltip: { ...tv.tooltip }
+                },
+                scales: { x: scaleX(), y: scaleY() },
+                animation: ANIM,
+            },
+        });
+    }
+
+    // ── Chart 3: Status ───────────────────────────────────────────────────────
+    function buildChartStatus(data) {
+        const tv  = getT();
+        const now = new Date();
+        const hojeBr = now.toLocaleDateString('pt-BR');
+
+        // Mirror KPI cards: all-time pending + delivered today (by data_baixa)
+        const pendentes = data.filter(i => !i.recebedor).length;
+        const entregues = data.filter(item => 
+            item.recebedor && item.data_baixa && item.data_baixa.includes(hojeBr)
+        ).length;
+        const total = pendentes + entregues;
+        const dangerC   = isDark() ? '#ff4d6a' : '#ef233c';
+        const successC  = '#06d6a0';
+
+        _instances.status = new Chart(document.getElementById('chartStatus'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Aguardando Retirada', 'Retiradas Hoje'],
+                datasets: [{
+                    data: [pendentes, entregues],
+                    backgroundColor: [dangerC + 'D0', successC + 'D0'],
+                    borderColor    : [dangerC, successC],
+                    borderWidth: 2, hoverOffset: 10,
+                }],
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: true, position: 'bottom', labels: { padding: 24, usePointStyle: true, pointStyleWidth: 12, color: tv.text } },
+                    tooltip: { ...tv.tooltip, callbacks: { label: ctx => {
+                        const pct = total ? ((ctx.parsed / total) * 100).toFixed(1) : '0';
+                        return `  ${ctx.label}: ${ctx.parsed.toLocaleString('pt-BR')} (${pct}%)`;
+                    }}},
+                },
+                cutout: '64%', animation: { duration: 1000, easing: 'easeOutQuart' },
+            },
+        });
+    }
+
+    // ── Chart 4: Por Transportadora ───────────────────────────────────────────
+    function buildChartTransportadora(data) {
+        const tv = getT();
+        const counts = {};
+        data.forEach(item => { const c = normalizeCarrier(item.entregador); counts[c] = (counts[c] || 0) + 1; });
+
+        const sorted = Object.entries(counts).sort(([, a], [, b]) => b - a);
+        const labels = [], values = []; let others = 0;
+        sorted.forEach(([l, v], i) => { if (i < 9) { labels.push(l); values.push(v); } else others += v; });
+        if (others > 0) { labels.push('Outros'); values.push(others); }
+
+        const total = values.reduce((a, b) => a + b, 0);
+        const opacityHex = isDark() ? 'DD' : 'CC';
+
+        _instances.transp = new Chart(document.getElementById('chartTransp'), {
+            type: 'doughnut',
+            data: {
+                labels,
+                datasets: [{
+                    data: values,
+                    backgroundColor: PALETTE.slice(0, labels.length).map(c => c + opacityHex),
+                    borderColor    : PALETTE.slice(0, labels.length),
+                    borderWidth: 2, hoverOffset: 10,
+                }],
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: true, position: 'bottom', labels: { padding: 14, usePointStyle: true, pointStyleWidth: 10, font: { size: 11 }, color: tv.text } },
+                    tooltip: { ...tv.tooltip, callbacks: { label: ctx => {
+                        const pct = total ? ((ctx.parsed / total) * 100).toFixed(1) : '0';
+                        return `  ${ctx.label}: ${ctx.parsed.toLocaleString('pt-BR')} (${pct}%)`;
+                    }}},
+                },
+                cutout: '55%', animation: { duration: 1000, easing: 'easeOutQuart' },
+            },
+        });
+    }
+
+    // ── Chart 5: Apartamentos ─────────────────────────────────────────────────
+    function buildChartApartamentos(data) {
+        const tv = getT();
+        const counts = {};
+        data.forEach(item => { const ap = (item.apartamento || '?').trim(); counts[ap] = (counts[ap] || 0) + 1; });
+
+        const sorted = Object.entries(counts).sort(([, a], [, b]) => b - a).slice(0, 15);
+        const labels = sorted.map(([ap]) => `AP ${ap}`);
+        const values = sorted.map(([, v]) => v);
+        const max    = values[0] || 1;
+        const base   = isDark() ? [91, 138, 255] : [74, 122, 255];
+
+        _instances.ap = new Chart(document.getElementById('chartAp'), {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Encomendas',
+                    data: values,
+                    backgroundColor: values.map(v => `rgba(${base.join(',')},${(0.28 + 0.72 * (v / max)).toFixed(2)})`),
+                    borderRadius: 7, borderSkipped: false,
+                }],
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { ...tv.tooltip } },
+                scales: {
+                    x: scaleY(),
+                    y: { grid: { display: false }, border: { display: false }, ticks: { color: tv.text } },
+                },
+                animation: ANIM,
+            },
+        });
+    }
+
+    // ── Theme toggle ──────────────────────────────────────────────────────────
+    const SVG_MOON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
+    const SVG_SUN  = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`;
+
+    function toggleTheme() {
+        const next = isDark() ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('theme', next);
+        _syncThemeIcon();
+        if (_cachedData) _buildAllCharts(_cachedData);
+    }
+
+    function _syncThemeIcon() {
+        const btn = document.getElementById('themeBtn');
+        if (!btn) return;
+        btn.innerHTML = isDark() ? SVG_SUN : SVG_MOON;
+        btn.title     = isDark() ? 'Modo Claro' : 'Modo Escuro';
+    }
+
+    _syncThemeIcon();
+</script>
+</body>
+</html>
