@@ -802,7 +802,8 @@
         <p>Informe o nome de quem está retirando a(s) encomenda(s).</p>
         <div class="form-group">
             <label>Nome do Recebedor</label>
-            <input type="text" id="inputRecebedor" placeholder="Ex: JOÃO SILVA — AP 101">
+            <input type="text" id="inputRecebedor" placeholder="Ex: JOÃO SILVA — AP 101" autocomplete="off">
+            <div class="autocomplete-list" id="listRecebedor"></div>
         </div>
         <div class="modal-actions">
             <button class="btn btn-secondary" onclick="fecharModalBaixa()">Cancelar</button>
@@ -1002,6 +1003,7 @@
         setupAutocomplete('nome', 'listNome', 'nome_morador');
         setupAutocomplete('ap', 'listAp', 'apartamento');
         setupAutocomplete('entregador', 'listEntregador', 'entregador');
+        setupAutocomplete('inputRecebedor', 'listRecebedor', 'nome_morador');
     };
 
     function setupAutocomplete(inputId, listId, field) {
